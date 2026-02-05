@@ -28,6 +28,14 @@ pico8 -run stackarta.p8
 
 ## Architecture
 
+### Screen Layout
+```
+grid_ox=24   -- grid offset x (left margin)
+grid_oy=12   -- grid offset y (below 10px top bar)
+tile_sz=8    -- 8x8 pixel tiles
+```
+Grid renders 80x80 pixels (10×8), leaving space for UI panels.
+
 ### State Machine
 `state` variable controls game flow:
 ```
@@ -86,12 +94,22 @@ Victory at wave 10.
 
 ## Card System
 
-Cards defined in `card_defs` table. Types:
+Cards defined in `card_defs` table. Each card has: `id`, `name`, `cost`, `dmg`, `rng`, `rate` (fire cooldown), `type`, `spr`, `col` (display color).
+
+Types:
 - `"tower"`: Placeable, blocks pathing, auto-fires
 - `"trap"`: Placeable, doesn't block pathing, applies effects
 - `"boost"`: Burn-only, gives +2 to specific stat
 
 Burned tower/trap cards give +1 DMG. Boost cards give their `dmg`/`rng` values as buffs.
+
+### Starter Deck
+8 cards: 2× sentry, 1× l-shot, 1× shorty, 1× slower, 2× ovrclk, 1× expand
+
+### Deck Cycling
+- Draw 3 cards per wave (max hand size: 5)
+- Played cards → discard pile → reshuffled when deck empty
+- Burned cards are removed from game permanently
 
 ## Controls
 
