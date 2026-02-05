@@ -29,7 +29,17 @@ pico8 -run stackarta.p8
 ## Architecture
 
 ### State Machine
-`state` variable controls game flow: `"plan"` → `"wave"` → `"reward"` → `"plan"` (loop) or `"gameover"`
+`state` variable controls game flow:
+```
+"title" → "plan" → "wave" → "reward" → "plan" (loop)
+                                    ↓
+                              "gameover"
+```
+- `title`: Animated title screen, press Z/X to start
+- `plan`: Player places towers and burns cards
+- `wave`: Enemies spawn and move, towers auto-fire
+- `reward`: Choose 1 of 3 cards to add to deck
+- `gameover`: Victory (wave 10) or defeat (core HP = 0)
 
 ### Grid System
 10x10 grid at `grid[y][x]` (0-indexed). Each tile stores:
@@ -55,12 +65,24 @@ pico8 -run stackarta.p8
 Victory at wave 10.
 
 ### Key Functions
+- `start_game()`: Initialize/reset all game state, called from title and game over
 - `play_card()`: Place tower/trap, deduct energy + heat penalty
 - `burn_card()`: Add buffs to tile, increase heat, remove card from game
 - `get_place_cost(gx,gy,card)`: Base cost + floor(heat/3)
 - `init_wave(w)`: Calculate enemy count, HP, speed, spawn rate for wave
-- `update_enemy(e)`: Move via flow field, apply trap effects, damage core on arrival
+- `update_enemy(e)`: Move via flow field (beeline fallback if blocked), damage core on arrival
 - `update_tower(t)`: Fire at nearest enemy in range using inherited stats
+
+### Sound Effects
+- `sfx(0)`: Tower fire (descending zap)
+- `sfx(1)`: Card burn (noise whoosh)
+- `sfx(2)`: Core hit (low thud)
+
+### UI Components
+- **Top bar**: Energy pips (yellow), HP bar (red), wave number
+- **Hand panel**: Cards with type icons, cost badges, selection indicators
+- **Tile info**: Shows buff_dmg, buff_rng, heat when hovering buffed tiles
+- **Wave status**: Enemy count and progress bar during combat
 
 ## Card System
 
@@ -71,12 +93,20 @@ Cards defined in `card_defs` table. Types:
 
 Burned tower/trap cards give +1 DMG. Boost cards give their `dmg`/`rng` values as buffs.
 
-## Controls (Plan State)
+## Controls
 
+**Title Screen**
+- Z or X: Start game
+
+**Plan State**
 - D-pad: Move cursor
-- O (Z key): Play selected card
-- X (X key): Burn selected card
+- Z (O button): Play selected card
+- X (X button): Burn selected card
 - Hold Down + Left/Right: Switch cards in hand
+
+**Reward State**
+- Left/Right: Select card
+- Z or X: Confirm selection
 
 ## Files
 
