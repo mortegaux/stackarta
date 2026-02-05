@@ -268,6 +268,35 @@ function burn_card()
  return true
 end
 
+-- sell a tower/trap (refund 1 energy)
+function sell_tower()
+ local tile=grid[cur_y][cur_x]
+
+ -- must be tower or trap
+ if tile.type!=2 and tile.type!=3 then
+  return false
+ end
+
+ -- remove from towers list
+ if tile.occupant then
+  del(towers,tile.occupant)
+ end
+
+ -- clear tile
+ tile.type=0
+ tile.occupant=nil
+
+ -- refund energy
+ energy=min(energy+1,max_energy+2)
+
+ -- update pathfinding
+ update_pathfinding()
+
+ sfx(1)
+ show_msg("sold +1 nrg")
+ return true
+end
+
 -- get effective tower stats (inheritance)
 function get_tower_stats(tower)
  local tile=grid[tower.gy][tower.gx]
@@ -321,9 +350,14 @@ function update_plan()
   play_card()
  end
 
- -- burn card (x button)
+ -- x button: sell tower or burn card
  if btnp(5) then
-  burn_card()
+  local tile=grid[cur_y][cur_x]
+  if tile.type==2 or tile.type==3 then
+   sell_tower()
+  else
+   burn_card()
+  end
  end
 
  -- start wave when hand is empty or press both buttons
@@ -916,8 +950,13 @@ function draw_hand_ui()
  rectfill(0,90,127,127,1)
  line(0,90,127,90,5)
 
- -- instructions
- print("z:play x:burn",38,92,6)
+ -- instructions (context-sensitive)
+ local tile=grid[cur_y][cur_x]
+ if tile.type==2 or tile.type==3 then
+  print("z:play x:sell",38,92,6)
+ else
+  print("z:play x:burn",38,92,6)
+ end
 
  if #hand==0 then
   print("- wave starts -",32,108,5)

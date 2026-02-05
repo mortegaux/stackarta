@@ -139,8 +139,10 @@ After each wave, player picks 1 of 3 cards from a tier-appropriate pool:
 **Plan State**
 - D-pad: Move cursor
 - Z (O button): Play selected card
-- X (X button): Burn selected card
+- X (X button): Burn card (empty tile) or Sell tower (occupied tile)
 - Hold Down + Left/Right: Switch cards in hand
+
+Selling a tower/trap refunds 1 energy and clears the tile.
 
 **Reward State**
 - Left/Right: Select card
