@@ -6,7 +6,7 @@ __lua__
 
 -- constants
 grid_ox=24  -- grid offset x
-grid_oy=4   -- grid offset y
+grid_oy=12  -- grid offset y (below top bar)
 tile_sz=8   -- tile size in pixels
 core_gx=5   -- core grid x
 core_gy=5   -- core grid y
@@ -566,12 +566,28 @@ function _draw()
  draw_cursor()
  draw_ui()
 
+ -- wave status panel
+ if state=="wave" then
+  rectfill(0,90,127,99,1)
+  line(0,90,127,90,5)
+  local remaining=wave_cnt-spawned+#enemies
+  print("wave "..wave_num,4,92,7)
+  print("enemies:"..remaining,50,92,8)
+  -- progress bar
+  local prog=1-(remaining/(wave_cnt))
+  rectfill(100,92,124,97,5)
+  rectfill(100,92,100+24*prog,97,11)
+  rect(100,92,124,97,6)
+ end
+
  if state=="reward" then
   draw_reward()
  end
 
  -- message
  if msg_t>0 then
+  rectfill(40,56,88,68,0)
+  rect(40,56,88,68,7)
   local mx=64-#msg*2
   print(msg,mx,60,7)
  end
@@ -686,70 +702,112 @@ function draw_cursor()
 end
 
 function draw_ui()
- -- top bar
- rectfill(0,0,127,3,0)
+ -- top bar background
+ rectfill(0,0,127,9,1)
+ line(0,9,127,9,5)
 
- -- energy (yellow pips)
- for i=1,energy do
-  rectfill(i*4-2,1,i*4,2,10)
+ -- energy section (left)
+ print("\x8b",1,2,10) -- lightning bolt
+ for i=1,max_energy+2 do
+  local col=5 -- dark bg
+  if i<=energy then col=10 end -- yellow if filled
+  rectfill(8+i*5,2,8+i*5+3,6,col)
  end
 
- -- core hp (red bar)
+ -- core hp section (center-right)
+ print("\x96",68,2,8) -- heart
+ rectfill(76,2,116,6,5) -- bg bar
  local hp_w=40*core_hp/max_core_hp
- rectfill(86,1,86+hp_w,2,8)
- print("hp",80,0,7)
+ rectfill(76,2,76+hp_w,6,8) -- hp bar
+ rect(76,2,116,6,6) -- border
 
- -- wave number
- print("w"..wave_num,116,0,7)
+ -- wave indicator (right)
+ rectfill(119,1,127,8,0)
+ print(wave_num,121,2,7)
 
  -- hand (bottom)
  if state=="plan" then
   draw_hand_ui()
  end
 
- -- tile info
+ -- tile info panel (bottom left)
  if state=="plan" then
   local tile=grid[cur_y][cur_x]
-  local info=""
-  if tile.buff_dmg>0 then info=info.."d+"..tile.buff_dmg.." " end
-  if tile.buff_rng>0 then info=info.."r+"..tile.buff_rng.." " end
-  if tile.heat>0 then info=info.."h"..tile.heat end
-  print(info,0,120,5)
+  if tile.buff_dmg>0 or tile.buff_rng>0 or tile.heat>0 then
+   rectfill(0,112,40,127,1)
+   rect(0,112,40,127,5)
+   local ty=114
+   if tile.buff_dmg>0 then
+    print("dmg+"..tile.buff_dmg,2,ty,8)
+    ty+=6
+   end
+   if tile.buff_rng>0 then
+    print("rng+"..tile.buff_rng,2,ty,12)
+    ty+=6
+   end
+   if tile.heat>0 then
+    print("heat:"..tile.heat,2,ty,9)
+   end
+  end
  end
 end
 
 function draw_hand_ui()
+ -- hand panel background
+ rectfill(0,90,127,127,1)
+ line(0,90,127,90,5)
+
+ -- instructions
+ print("z:play x:burn",38,92,6)
+
+ if #hand==0 then
+  print("- wave starts -",32,108,5)
+  return
+ end
+
  local y=100
  local start_x=64-(#hand*18)/2
 
  for i,card in ipairs(hand) do
   local x=start_x+(i-1)*18
   local cy=y
-  if i==cur_sel then cy=y-2 end
+  local sel=i==cur_sel
+
+  -- card shadow
+  if sel then
+   cy=y-3
+   rectfill(x+1,cy+1,x+16,cy+23,0)
+  end
 
   -- card bg
   local col=card.def.col
-  rectfill(x,cy,x+15,cy+20,col)
-  rect(x,cy,x+15,cy+20,6)
+  rectfill(x,cy,x+15,cy+21,col)
+  rect(x,cy,x+15,cy+21,sel and 7 or 5)
 
-  -- card name (abbreviated)
-  print(sub(card.def.name,1,4),x+1,cy+2,0)
+  -- card type icon
+  local icon="\x8e" -- default
+  if card.def.type=="tower" then icon="\x94"
+  elseif card.def.type=="trap" then icon="\x97"
+  elseif card.def.type=="boost" then icon="\x8b"
+  end
+  print(icon,x+1,cy+1,0)
 
-  -- cost
+  -- card name
+  print(sub(card.def.name,1,5),x+1,cy+8,0)
+
+  -- cost badge
   local cost=card.def.cost
-  if #hand>0 and i==cur_sel then
+  if sel then
    cost=get_place_cost(cur_x,cur_y,card)
   end
-  print(cost,x+6,cy+14,0)
+  circfill(x+12,cy+18,4,0)
+  print(cost,x+10,cy+16,10)
 
-  -- selected indicator
-  if i==cur_sel then
-   print("\x8e",x+6,cy+22,7)
+  -- selection arrow
+  if sel then
+   print("\x83",x+5,cy+24,7)
   end
  end
-
- -- instructions
- print("\x97:play \x8e:burn",32,92,5)
 end
 
 function draw_reward()
