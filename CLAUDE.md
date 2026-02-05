@@ -98,7 +98,7 @@ Victory at wave 10.
 
 ## Card System
 
-Cards defined in `card_defs` table. Each card has: `id`, `name`, `cost`, `dmg`, `rng`, `rate` (fire cooldown), `type`, `spr`, `col` (display color).
+Cards defined in `card_defs` table. Each card has: `id`, `name`, `cost`, `dmg`, `rng`, `rate` (fire cooldown), `type`, `spr`, `col` (display color), `rar` (rarity 1-3).
 
 Types:
 - `"tower"`: Placeable, blocks pathing, auto-fires
@@ -106,6 +106,17 @@ Types:
 - `"boost"`: Burn-only, gives +2 to specific stat
 
 Burned tower/trap cards give +1 DMG. Boost cards give their `dmg`/`rng` values as buffs.
+
+### Card Rarities
+- **Common (rar=1)**: sentry, shorty - basic towers
+- **Rare (rar=2)**: l-shot, slower - stronger/utility
+- **Legendary (rar=3)**: ovrclk, expand - powerful boosts
+
+### Reward Pool Tiers
+After each wave, player picks 1 of 3 cards from a tier-appropriate pool:
+- Waves 1-3: Common rewards (gray border)
+- Waves 4-6: Rare rewards (blue border)
+- Waves 7-9: Legendary rewards (yellow border)
 
 ### Starter Deck
 8 cards: 2× sentry, 1× l-shot, 1× shorty, 1× slower, 2× ovrclk, 1× expand

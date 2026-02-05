@@ -20,13 +20,14 @@ core_hp=10
 max_core_hp=10
 
 -- card definitions
+-- rar: 1=common, 2=rare, 3=legendary
 card_defs={
- {id=1,name="sentry",cost=2,dmg=1,rng=25,rate=30,type="tower",spr=16,col=12},
- {id=2,name="l-shot",cost=3,dmg=2,rng=50,rate=75,type="tower",spr=17,col=3},
- {id=3,name="shorty",cost=1,dmg=1,rng=15,rate=15,type="tower",spr=18,col=13},
- {id=4,name="slower",cost=2,dmg=0,rng=20,rate=0,type="trap",spr=19,col=1},
- {id=5,name="ovrclk",cost=0,dmg=2,rng=0,rate=0,type="boost",spr=20,col=8},
- {id=6,name="expand",cost=0,dmg=0,rng=2,rate=0,type="boost",spr=21,col=12}
+ {id=1,name="sentry",cost=2,dmg=1,rng=25,rate=30,type="tower",spr=16,col=12,rar=1},
+ {id=2,name="l-shot",cost=3,dmg=2,rng=50,rate=75,type="tower",spr=17,col=3,rar=2},
+ {id=3,name="shorty",cost=1,dmg=1,rng=15,rate=15,type="tower",spr=18,col=13,rar=1},
+ {id=4,name="slower",cost=2,dmg=0,rng=20,rate=0,type="trap",spr=19,col=1,rar=2},
+ {id=5,name="ovrclk",cost=0,dmg=2,rng=0,rate=0,type="boost",spr=20,col=8,rar=3},
+ {id=6,name="expand",cost=0,dmg=0,rng=2,rate=0,type="boost",spr=21,col=12,rar=3}
 }
 
 -- wave scaling (dynamic)
@@ -562,11 +563,31 @@ end
 reward_cards={}
 reward_sel=1
 
+-- get reward tier based on wave
+function get_reward_tier(w)
+ if w<=3 then return 1 end
+ if w<=6 then return 2 end
+ return 3
+end
+
+-- get cards of specific rarity
+function get_cards_by_rar(rar)
+ local pool={}
+ for c in all(card_defs) do
+  if c.rar==rar then add(pool,c) end
+ end
+ return pool
+end
+
 function init_reward()
  reward_cards={}
+ local tier=get_reward_tier(wave_num-1)
+ local pool=get_cards_by_rar(tier)
+ -- fallback if pool empty
+ if #pool==0 then pool=card_defs end
  for i=1,3 do
-  local id=flr(rnd(#card_defs))+1
-  add(reward_cards,card_defs[id])
+  local idx=flr(rnd(#pool))+1
+  add(reward_cards,pool[idx])
  end
  reward_sel=1
 end
@@ -892,20 +913,30 @@ end
 function draw_reward()
  rectfill(20,40,108,88,0)
  rect(20,40,108,88,7)
- print("choose a card",36,44,7)
+ -- show tier label
+ local tier=get_reward_tier(wave_num-1)
+ local tlbl="common"
+ local tcol=6
+ if tier==2 then tlbl="rare" tcol=12
+ elseif tier==3 then tlbl="legendary" tcol=10 end
+ print(tlbl.." reward",38,44,tcol)
 
  for i=1,3 do
   local def=reward_cards[i]
   local x=24+(i-1)*30
   local y=54
   local col=def.col
+  -- rarity border color
+  local bcol=6
+  if def.rar==2 then bcol=12
+  elseif def.rar==3 then bcol=10 end
 
   if i==reward_sel then
    rect(x-1,y-1,x+26,y+28,7)
   end
 
   rectfill(x,y,x+25,y+27,col)
-  rect(x,y,x+25,y+27,6)
+  rect(x,y,x+25,y+27,bcol)
   print(sub(def.name,1,6),x+1,y+2,0)
   print("c"..def.cost,x+1,y+12,0)
   if def.dmg>0 then print("d"..def.dmg,x+1,y+18,0) end
