@@ -374,31 +374,36 @@ function update_plan()
  end
 end
 
-function init_wave(w)
- -- special wave 5: elites
+-- get wave info for preview (returns table)
+function get_wave_info(w)
  if w==5 then
-  wave_cnt=6
-  spawn_delay=90
-  wave_hp=15
-  wave_spd=0.3
-  wave_type="elite"
-  return
+  return {cnt=6,hp=15,spd=0.3,type="elite"}
  end
- -- special wave 10: boss
  if w==10 then
-  wave_cnt=1
-  spawn_delay=0
-  wave_hp=250
-  wave_spd=0.2
-  wave_type="boss"
-  return
+  return {cnt=1,hp=250,spd=0.2,type="boss"}
  end
- -- normal waves
- wave_type="normal"
- wave_cnt=5+(w*2)
- spawn_delay=60-min(w*2,30)
- wave_hp=2*(1.2^(w-1))
- wave_spd=min(0.4+(w*0.05),1.2)
+ return {
+  cnt=5+(w*2),
+  hp=2*(1.2^(w-1)),
+  spd=min(0.4+(w*0.05),1.2),
+  type="normal"
+ }
+end
+
+function init_wave(w)
+ local info=get_wave_info(w)
+ wave_cnt=info.cnt
+ wave_hp=info.hp
+ wave_spd=info.spd
+ wave_type=info.type
+ -- spawn delay
+ if w==5 then
+  spawn_delay=90
+ elseif w==10 then
+  spawn_delay=0
+ else
+  spawn_delay=60-min(w*2,30)
+ end
 end
 
 function start_wave()
@@ -1039,6 +1044,18 @@ function draw_ui()
     print("heat:"..tile.heat,2,ty,9)
    end
   end
+
+  -- wave preview panel (bottom right)
+  local info=get_wave_info(wave_num)
+  local wcol=6
+  if info.type=="elite" then wcol=10
+  elseif info.type=="boss" then wcol=14 end
+  rectfill(87,104,127,127,1)
+  rect(87,104,127,127,5)
+  print("wave "..wave_num,89,106,wcol)
+  print("x"..info.cnt,89,113,7)
+  print("hp:"..flr(info.hp),105,113,8)
+  print("spd:"..info.spd,89,120,12)
  end
 end
 
