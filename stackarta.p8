@@ -20,6 +20,8 @@ core_hp=10
 max_core_hp=10
 kills=0
 paused=false
+difficulty=2 -- 1=easy, 2=normal, 3=hard
+diff_names={"easy","normal","hard"}
 
 -- card definitions
 -- rar: 1=common, 2=rare, 3=legendary
@@ -347,6 +349,9 @@ function _update()
 
  if state=="title" then
   title_t+=1
+  -- difficulty selection
+  if btnp(0) then difficulty=max(1,difficulty-1) end
+  if btnp(1) then difficulty=min(3,difficulty+1) end
   if btnp(4) or btnp(5) then
    start_game()
   end
@@ -395,18 +400,26 @@ function update_plan()
  end
 end
 
+-- difficulty multipliers: {hp, spd, cnt}
+diff_mult={
+ {0.7,0.85,0.8},  -- easy
+ {1,1,1},         -- normal
+ {1.4,1.15,1.2}   -- hard
+}
+
 -- get wave info for preview (returns table)
 function get_wave_info(w)
+ local dm=diff_mult[difficulty]
  if w==5 then
-  return {cnt=6,hp=15,spd=0.3,type="elite"}
+  return {cnt=flr(6*dm[3]),hp=flr(15*dm[1]),spd=0.3*dm[2],type="elite"}
  end
  if w==10 then
-  return {cnt=1,hp=250,spd=0.2,type="boss"}
+  return {cnt=1,hp=flr(250*dm[1]),spd=0.2*dm[2],type="boss"}
  end
  return {
-  cnt=5+(w*2),
-  hp=2*(1.2^(w-1)),
-  spd=min(0.4+(w*0.05),1.2),
+  cnt=flr((5+(w*2))*dm[3]),
+  hp=flr(2*(1.2^(w-1))*dm[1]),
+  spd=min((0.4+(w*0.05))*dm[2],1.4),
   type="normal"
  }
 end
@@ -1246,20 +1259,28 @@ function draw_title()
 
  -- decorative core
  local pulse=sin(title_t*0.1)*2
- circfill(64,70,8+pulse,14)
- circfill(64,70,5+pulse*0.5,15)
+ circfill(64,64,6+pulse,14)
+ circfill(64,64,4+pulse*0.5,15)
+
+ -- difficulty selector
+ local dcol={11,6,8}
+ rectfill(30,76,98,88,1)
+ rect(30,76,98,88,5)
+ print("\139",32,80,6)
+ print(diff_names[difficulty],50,80,dcol[difficulty])
+ print("\145",90,80,6)
 
  -- instructions panel
- rectfill(24,85,104,110,1)
- rect(24,85,104,110,5)
+ rectfill(24,92,104,114,1)
+ rect(24,92,104,114,5)
 
- print("how to play:",34,88,7)
- print("\x97 place towers",32,97,10)
- print("\x8e burn for buffs",30,104,8)
+ print("\x97 place towers",32,95,10)
+ print("\x8e burn for buffs",30,102,8)
+ print("o+x pause",42,109,5)
 
  -- high score (if any)
  if best_wave>0 then
-  print("best:w"..best_wave.." k"..best_kills,34,115,5)
+  print("best:w"..best_wave.." k"..best_kills,34,118,5)
  end
 
  -- start prompt
@@ -1271,15 +1292,17 @@ end
 
 function draw_gameover()
  cls(0)
+ local dcol={11,6,8}
  if core_hp<=0 then
-  print("game over",44,30,8)
-  print("wave "..wave_num,48,40,7)
+  print("game over",44,25,8)
+  print("wave "..wave_num,48,35,7)
  else
-  print("victory!",46,30,11)
-  print("core defended!",32,40,7)
+  print("victory!",46,25,11)
+  print("core defended!",32,35,7)
  end
- -- stats
- print("enemies slain: "..kills,28,53,6)
+ -- difficulty and stats
+ print("["..diff_names[difficulty].."]",48,45,dcol[difficulty])
+ print("enemies slain: "..kills,28,55,6)
 
  -- high scores
  rectfill(24,65,104,95,1)
