@@ -404,9 +404,23 @@ function start_wave()
  spawn_timer=0
  spawned=0
  init_wave(wave_num)
+ -- boss warning for wave 10
+ if wave_num==10 then
+  boss_warn=90 -- 3 second warning
+ else
+  boss_warn=0
+ end
 end
 
 function update_wave()
+ -- boss warning countdown
+ if boss_warn>0 then
+  boss_warn-=1
+  if boss_warn==60 then shake=8 end
+  if boss_warn==30 then shake=12 end
+  return
+ end
+
  -- spawn enemies
  if spawned<wave_cnt then
   spawn_timer-=1
@@ -783,6 +797,28 @@ function _draw()
 
  if state=="reward" then
   draw_reward()
+ end
+
+ -- boss warning overlay
+ if boss_warn and boss_warn>0 then
+  -- flashing background
+  local flash=boss_warn%10<5
+  if flash then
+   rectfill(0,0,127,127,2)
+  end
+  -- warning box
+  rectfill(20,45,108,75,0)
+  rect(20,45,108,75,8)
+  rect(21,46,107,74,14)
+  -- text
+  local pulse=boss_warn%6<3
+  print("!! warning !!",34,50,pulse and 8 or 14)
+  print("boss incoming",34,60,7)
+  -- countdown dots
+  local dots=flr(boss_warn/30)+1
+  for i=1,dots do
+   circfill(54+i*8,70,2,14)
+  end
  end
 
  -- message
