@@ -12,7 +12,7 @@ core_gx=5   -- core grid x
 core_gy=5   -- core grid y
 
 -- game state
-state="plan" -- plan, wave, reward, gameover
+state="title" -- title, plan, wave, reward, gameover
 wave_num=1
 energy=3
 max_energy=3
@@ -50,6 +50,23 @@ msg=""
 msg_t=0
 
 function _init()
+ state="title"
+ title_t=0
+end
+
+function start_game()
+ state="plan"
+ wave_num=1
+ energy=3
+ core_hp=10
+ grid={}
+ deck={}
+ hand={}
+ discard={}
+ towers={}
+ enemies={}
+ cur_x=5
+ cur_y=5
  init_grid()
  init_deck()
  draw_hand(3)
@@ -268,7 +285,12 @@ function _update()
  if shake>0 then shake-=1 end
  if msg_t>0 then msg_t-=1 end
 
- if state=="plan" then
+ if state=="title" then
+  title_t+=1
+  if btnp(4) or btnp(5) then
+   start_game()
+  end
+ elseif state=="plan" then
   update_plan()
  elseif state=="wave" then
   update_wave()
@@ -555,6 +577,12 @@ function _draw()
 
  cls(0)
 
+ if state=="title" then
+  draw_title()
+  camera(0,0)
+  return
+ end
+
  if state=="gameover" then
   draw_gameover()
   return
@@ -834,6 +862,48 @@ function draw_reward()
  end
 end
 
+function draw_title()
+ -- animated background
+ for i=0,15 do
+  local y=(title_t*0.3+i*12)%140-10
+  local x=sin(i*0.1+title_t*0.01)*20+64
+  circfill(x,y,2,1)
+ end
+
+ -- title box
+ rectfill(14,20,114,48,1)
+ rect(14,20,114,48,12)
+ rect(15,21,113,47,5)
+
+ -- title text
+ local bounce=sin(title_t*0.05)*2
+ print("stackarta",34,26+bounce,12)
+ print("stackarta",33,25+bounce,7)
+
+ -- tagline
+ print("burn the hand.",28,40,6)
+ print("build the land.",26,46,6)
+
+ -- decorative core
+ local pulse=sin(title_t*0.1)*2
+ circfill(64,70,8+pulse,14)
+ circfill(64,70,5+pulse*0.5,15)
+
+ -- instructions panel
+ rectfill(24,90,104,120,1)
+ rect(24,90,104,120,5)
+
+ print("how to play:",34,93,7)
+ print("\x97 place towers",32,102,10)
+ print("\x8e burn for buffs",30,110,8)
+
+ -- start prompt
+ local blink=title_t%40<20
+ if blink then
+  print("press z or x",36,125,7)
+ end
+end
+
 function draw_gameover()
  cls(0)
  if core_hp<=0 then
@@ -843,23 +913,10 @@ function draw_gameover()
   print("victory!",46,50,11)
   print("core defended!",32,60,7)
  end
- print("\x97 to restart",38,80,5)
+ print("z to restart",40,80,5)
 
  if btnp(4) then
-  -- reset game
-  grid={}
-  deck={}
-  hand={}
-  discard={}
-  towers={}
-  enemies={}
-  wave_num=1
-  energy=3
-  core_hp=10
-  state="plan"
-  cur_x=5
-  cur_y=5
-  _init()
+  start_game()
  end
 end
 
