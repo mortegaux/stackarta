@@ -60,6 +60,10 @@ function _init()
  state="title"
  title_t=0
  music(0) -- start background music
+ -- load high scores
+ cartdata("stackarta_v1")
+ best_wave=dget(0)
+ best_kills=dget(1)
 end
 
 function start_game()
@@ -83,6 +87,21 @@ function start_game()
  draw_hand(3)
  update_pathfinding()
  music(0) -- restart music
+end
+
+function save_highscore()
+ local dominated=false
+ if wave_num>best_wave then
+  best_wave=wave_num
+  dset(0,best_wave)
+  dominated=true
+ end
+ if kills>best_kills then
+  best_kills=kills
+  dset(1,best_kills)
+  dominated=true
+ end
+ return dominated
 end
 
 function init_grid()
@@ -493,6 +512,7 @@ function update_wave()
  if core_hp<=0 then
   state="gameover"
   music(-1) -- stop music
+  save_highscore()
  end
 end
 
@@ -705,6 +725,7 @@ function end_wave()
  if wave_num>10 then
   state="gameover"
   music(-1) -- stop music
+  save_highscore()
   msg="victory!"
   msg_t=9999
   return
@@ -1229,12 +1250,17 @@ function draw_title()
  circfill(64,70,5+pulse*0.5,15)
 
  -- instructions panel
- rectfill(24,90,104,120,1)
- rect(24,90,104,120,5)
+ rectfill(24,85,104,110,1)
+ rect(24,85,104,110,5)
 
- print("how to play:",34,93,7)
- print("\x97 place towers",32,102,10)
- print("\x8e burn for buffs",30,110,8)
+ print("how to play:",34,88,7)
+ print("\x97 place towers",32,97,10)
+ print("\x8e burn for buffs",30,104,8)
+
+ -- high score (if any)
+ if best_wave>0 then
+  print("best:w"..best_wave.." k"..best_kills,34,115,5)
+ end
 
  -- start prompt
  local blink=title_t%40<20
@@ -1246,15 +1272,27 @@ end
 function draw_gameover()
  cls(0)
  if core_hp<=0 then
-  print("game over",44,45,8)
-  print("wave "..wave_num,48,55,7)
+  print("game over",44,30,8)
+  print("wave "..wave_num,48,40,7)
  else
-  print("victory!",46,45,11)
-  print("core defended!",32,55,7)
+  print("victory!",46,30,11)
+  print("core defended!",32,40,7)
  end
- -- kill counter
- print("enemies slain: "..kills,28,68,6)
- print("z to restart",40,85,5)
+ -- stats
+ print("enemies slain: "..kills,28,53,6)
+
+ -- high scores
+ rectfill(24,65,104,95,1)
+ rect(24,65,104,95,5)
+ print("- best -",48,68,6)
+ print("wave: "..best_wave,36,78,7)
+ print("kills: "..best_kills,66,78,7)
+ -- new record indicator
+ if wave_num>=best_wave or kills>=best_kills then
+  print("*new*",52,88,10)
+ end
+
+ print("z to restart",40,105,5)
 
  if btnp(4) then
   start_game()
