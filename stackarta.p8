@@ -18,6 +18,7 @@ energy=3
 max_energy=3
 core_hp=10
 max_core_hp=10
+kills=0
 
 -- card definitions
 -- rar: 1=common, 2=rare, 3=legendary
@@ -64,6 +65,7 @@ function start_game()
  wave_num=1
  energy=3
  core_hp=10
+ kills=0
  grid={}
  deck={}
  hand={}
@@ -429,6 +431,10 @@ function update_wave()
  for i=#enemies,1,-1 do
   local e=enemies[i]
   if e.hp<=0 then
+   -- count kill (not leak)
+   if not e.leaked then
+    kills+=1
+   end
    -- particle color based on enemy type
    local col=8 -- red for normal
    local cnt=6
@@ -560,6 +566,7 @@ function update_enemy(e)
  if sqrt(cdx*cdx+cdy*cdy)<4 then
   core_hp-=1
   e.hp=0
+  e.leaked=true -- not a kill
   shake=6
   sfx(2) -- core hit sound
  end
@@ -1137,13 +1144,15 @@ end
 function draw_gameover()
  cls(0)
  if core_hp<=0 then
-  print("game over",44,50,8)
-  print("wave "..wave_num,48,60,7)
+  print("game over",44,45,8)
+  print("wave "..wave_num,48,55,7)
  else
-  print("victory!",46,50,11)
-  print("core defended!",32,60,7)
+  print("victory!",46,45,11)
+  print("core defended!",32,55,7)
  end
- print("z to restart",40,80,5)
+ -- kill counter
+ print("enemies slain: "..kills,28,68,6)
+ print("z to restart",40,85,5)
 
  if btnp(4) then
   start_game()
