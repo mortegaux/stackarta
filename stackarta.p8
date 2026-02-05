@@ -27,7 +27,10 @@ card_defs={
  {id=3,name="shorty",cost=1,dmg=1,rng=15,rate=15,type="tower",spr=18,col=13,rar=1},
  {id=4,name="slower",cost=2,dmg=0,rng=20,rate=0,type="trap",spr=19,col=1,rar=2},
  {id=5,name="ovrclk",cost=0,dmg=2,rng=0,rate=0,type="boost",spr=20,col=8,rar=3},
- {id=6,name="expand",cost=0,dmg=0,rng=2,rate=0,type="boost",spr=21,col=12,rar=3}
+ {id=6,name="expand",cost=0,dmg=0,rng=2,rate=0,type="boost",spr=21,col=12,rar=3},
+ {id=7,name="spike",cost=1,dmg=3,rng=0,rate=0,type="trap",spr=22,col=8,rar=1},
+ {id=8,name="blaster",cost=3,dmg=1,rng=20,rate=45,type="tower",spr=23,col=9,rar=2,aoe=true},
+ {id=9,name="rapid",cost=4,dmg=1,rng=30,rate=8,type="tower",spr=24,col=11,rar=3}
 }
 
 -- wave scaling (dynamic)
@@ -443,6 +446,16 @@ function update_enemy(e)
   if trap.def.name=="slower" then
    e.slowed=30
   end
+  -- spike trap deals damage once then disappears
+  if trap.def.name=="spike" and not trap.used then
+   e.hp-=trap.def.dmg+tile.buff_dmg
+   trap.used=true
+   -- remove spike from grid
+   tile.type=0
+   tile.occupant=nil
+   del(towers,trap)
+   sfx(0)
+  end
  end
 
  -- move toward lower dist
@@ -515,6 +528,27 @@ function update_tower(t)
  local stats=get_tower_stats(t)
  local px=grid_ox+t.gx*tile_sz+4
  local py=grid_oy+t.gy*tile_sz+4
+
+ -- aoe tower hits all in range
+ if t.def.aoe then
+  local hit_any=false
+  for e in all(enemies) do
+   local dx=e.x-px
+   local dy=e.y-py
+   local d=sqrt(dx*dx+dy*dy)
+   if d<=stats.rng then
+    e.hp-=stats.dmg
+    hit_any=true
+   end
+  end
+  if hit_any then
+   t.reload=stats.rate
+   t.fire_t=6
+   t.aoe_pulse=8
+   sfx(0)
+  end
+  return
+ end
 
  -- find nearest enemy in range
  local target=nil
@@ -735,6 +769,31 @@ function draw_towers()
    pset(px+5,py+2,col)
    pset(px+2,py+5,col)
    pset(px+5,py+5,col)
+  elseif t.def.name=="spike" then
+   -- spikes (X pattern)
+   line(px+1,py+1,px+6,py+6,col)
+   line(px+6,py+1,px+1,py+6,col)
+   pset(px+4,py+4,7)
+  elseif t.def.name=="blaster" then
+   -- circle with rays
+   circfill(px+4,py+4,2,col)
+   pset(px+4,py+1,col)
+   pset(px+4,py+7,col)
+   pset(px+1,py+4,col)
+   pset(px+7,py+4,col)
+  elseif t.def.name=="rapid" then
+   -- double barrel
+   rectfill(px+2,py+2,px+3,py+6,col)
+   rectfill(px+5,py+2,px+6,py+6,col)
+   pset(px+2,py+1,7)
+   pset(px+5,py+1,7)
+  end
+
+  -- aoe pulse effect
+  if t.aoe_pulse and t.aoe_pulse>0 then
+   local stats=get_tower_stats(t)
+   circ(px+4,py+4,stats.rng*(t.aoe_pulse/8),9)
+   t.aoe_pulse-=1
   end
 
   -- fire beam

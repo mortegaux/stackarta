@@ -108,9 +108,14 @@ Types:
 Burned tower/trap cards give +1 DMG. Boost cards give their `dmg`/`rng` values as buffs.
 
 ### Card Rarities
-- **Common (rar=1)**: sentry, shorty - basic towers
-- **Rare (rar=2)**: l-shot, slower - stronger/utility
-- **Legendary (rar=3)**: ovrclk, expand - powerful boosts
+- **Common (rar=1)**: sentry, shorty, spike
+- **Rare (rar=2)**: l-shot, slower, blaster (AOE)
+- **Legendary (rar=3)**: ovrclk, expand, rapid
+
+### Special Card Mechanics
+- **spike**: Trap that deals 3 damage once, then disappears
+- **blaster**: Tower with `aoe=true`, damages all enemies in range
+- **rapid**: Tower with very fast fire rate (rate=8)
 
 ### Reward Pool Tiers
 After each wave, player picks 1 of 3 cards from a tier-appropriate pool:
