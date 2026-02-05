@@ -955,6 +955,21 @@ function draw_towers()
    pset(px+5,py+1,7)
   end
 
+  -- buff indicators (bottom corners)
+  local tile=grid[t.gy][t.gx]
+  if tile.buff_dmg>0 or tile.buff_rng>0 then
+   -- glow outline for buffed towers
+   rect(px,py,px+7,py+7,5)
+  end
+  -- dmg pips (red, bottom left)
+  for i=1,min(tile.buff_dmg,3) do
+   pset(px+i-1,py+7,8)
+  end
+  -- rng pips (blue, bottom right)
+  for i=1,min(tile.buff_rng,3) do
+   pset(px+8-i,py+7,12)
+  end
+
   -- aoe pulse effect
   if t.aoe_pulse and t.aoe_pulse>0 then
    local stats=get_tower_stats(t)
