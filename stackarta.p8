@@ -42,6 +42,7 @@ hand={}
 discard={}
 towers={}
 enemies={}
+particles={}
 
 -- cursor
 cur_x=5
@@ -69,6 +70,7 @@ function start_game()
  discard={}
  towers={}
  enemies={}
+ particles={}
  cur_x=5
  cur_y=5
  init_grid()
@@ -423,12 +425,22 @@ function update_wave()
   update_tower(t)
  end
 
- -- remove dead enemies
+ -- remove dead enemies (spawn death particles)
  for i=#enemies,1,-1 do
-  if enemies[i].hp<=0 then
+  local e=enemies[i]
+  if e.hp<=0 then
+   -- particle color based on enemy type
+   local col=8 -- red for normal
+   local cnt=6
+   if e.etype=="elite" then col=10 cnt=10
+   elseif e.etype=="boss" then col=14 cnt=20 end
+   spawn_particles(e.x,e.y,col,cnt)
    deli(enemies,i)
   end
  end
+
+ -- update particles
+ update_particles()
 
  -- check wave complete
  if spawned>=wave_cnt and #enemies==0 then
@@ -607,6 +619,43 @@ function update_tower(t)
  end
 end
 
+-- particle system for death effects
+function spawn_particles(x,y,col,count)
+ count=count or 6
+ for i=1,count do
+  local angle=rnd(1)
+  local spd=0.5+rnd(1.5)
+  add(particles,{
+   x=x,y=y,
+   dx=cos(angle)*spd,
+   dy=sin(angle)*spd,
+   col=col,
+   life=15+flr(rnd(10))
+  })
+ end
+end
+
+function update_particles()
+ for i=#particles,1,-1 do
+  local p=particles[i]
+  p.x+=p.dx
+  p.y+=p.dy
+  p.dy+=0.1 -- gravity
+  p.life-=1
+  if p.life<=0 then
+   deli(particles,i)
+  end
+ end
+end
+
+function draw_particles()
+ for p in all(particles) do
+  local col=p.col
+  if p.life<5 then col=5 end -- fade to dark
+  pset(p.x,p.y,col)
+ end
+end
+
 function end_wave()
  wave_num+=1
  if wave_num>10 then
@@ -697,6 +746,7 @@ function _draw()
  draw_grid()
  draw_towers()
  draw_enemies()
+ draw_particles()
  draw_cursor()
  draw_ui()
 
