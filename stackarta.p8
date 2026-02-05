@@ -19,6 +19,7 @@ max_energy=3
 core_hp=10
 max_core_hp=10
 kills=0
+paused=false
 
 -- card definitions
 -- rar: 1=common, 2=rare, 3=legendary
@@ -67,6 +68,7 @@ function start_game()
  energy=3
  core_hp=10
  kills=0
+ paused=false
  grid={}
  deck={}
  hand={}
@@ -420,6 +422,19 @@ function start_wave()
 end
 
 function update_wave()
+ -- pause toggle (o+x)
+ if btn(4) and btn(5) then
+  if not pause_held then
+   paused=not paused
+   pause_held=true
+  end
+ else
+  pause_held=false
+ end
+
+ -- skip updates when paused
+ if paused then return end
+
  -- boss warning countdown
  if boss_warn>0 then
   boss_warn-=1
@@ -830,8 +845,23 @@ function _draw()
   end
  end
 
+ -- pause overlay
+ if paused and state=="wave" then
+  rectfill(30,45,98,80,0)
+  rect(30,45,98,80,7)
+  rect(31,46,97,79,5)
+  print("paused",50,50,7)
+  print("o+x: resume",40,62,6)
+  print("z: restart",43,70,6)
+  -- restart option
+  if btnp(4) and not btn(5) then
+   paused=false
+   start_game()
+  end
+ end
+
  -- message
- if msg_t>0 then
+ if msg_t>0 and not paused then
   rectfill(40,56,88,68,0)
   rect(40,56,88,68,7)
   local mx=64-#msg*2
