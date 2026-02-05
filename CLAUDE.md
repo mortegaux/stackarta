@@ -64,11 +64,15 @@ Grid renders 80x80 pixels (10×8), leaving space for UI panels.
 `update_pathfinding()` runs BFS from core (5,5). Towers block pathing (dist=99), traps don't. Enemies move toward adjacent tile with lowest `dist`.
 
 ### Wave Scaling
-`init_wave(w)` calculates dynamic difficulty. No hardcoded wave table.
+`init_wave(w)` calculates dynamic difficulty. Normal waves use formulas:
 - **Enemy count**: `5 + (w * 2)`
 - **Spawn delay**: `60 - min(w * 2, 30)` frames (faster over time)
 - **HP**: `2 * (1.2 ^ (w - 1))` (exponential)
 - **Speed**: `min(0.4 + (w * 0.05), 1.2)` px/frame (capped)
+
+**Special Waves:**
+- **Wave 5 (Elites)**: 6 enemies, 15 HP, 0.3 speed, yellow diamonds
+- **Wave 10 (Boss)**: 1 enemy, 250 HP, 0.2 speed, large pulsing circle
 
 Victory at wave 10.
 

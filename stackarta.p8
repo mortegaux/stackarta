@@ -331,13 +331,29 @@ function update_plan()
 end
 
 function init_wave(w)
- -- enemy count scales: 5 + 2 per wave
+ -- special wave 5: elites
+ if w==5 then
+  wave_cnt=6
+  spawn_delay=90
+  wave_hp=15
+  wave_spd=0.3
+  wave_type="elite"
+  return
+ end
+ -- special wave 10: boss
+ if w==10 then
+  wave_cnt=1
+  spawn_delay=0
+  wave_hp=250
+  wave_spd=0.2
+  wave_type="boss"
+  return
+ end
+ -- normal waves
+ wave_type="normal"
  wave_cnt=5+(w*2)
- -- spawn delay decreases (faster spawns)
  spawn_delay=60-min(w*2,30)
- -- hp scales exponentially: 2 * 1.2^(w-1)
  wave_hp=2*(1.2^(w-1))
- -- speed scales linearly, capped at 1.2
  wave_spd=min(0.4+(w*0.05),1.2)
 end
 
@@ -405,7 +421,8 @@ function spawn_enemy()
   hp=wave_hp,
   max_hp=wave_hp,
   spd=wave_spd,
-  slowed=0
+  slowed=0,
+  etype=wave_type
  })
 end
 
@@ -599,7 +616,17 @@ function _draw()
   rectfill(0,90,127,99,1)
   line(0,90,127,90,5)
   local remaining=wave_cnt-spawned+#enemies
-  print("wave "..wave_num,4,92,7)
+  -- show wave type
+  local wlbl="wave "..wave_num
+  local wcol=7
+  if wave_type=="elite" then
+   wlbl="elites!"
+   wcol=10
+  elseif wave_type=="boss" then
+   wlbl="!! boss !!"
+   wcol=14
+  end
+  print(wlbl,4,92,wcol)
   print("enemies:"..remaining,50,92,8)
   -- progress bar
   local prog=1-(remaining/(wave_cnt))
@@ -701,10 +728,34 @@ function draw_enemies()
  for e in all(enemies) do
   local col=8
   if e.slowed>0 then col=1 end
-  rectfill(e.x-2,e.y-2,e.x+2,e.y+2,col)
-  -- hp bar
-  local hp_w=4*e.hp/e.max_hp
-  rectfill(e.x-2,e.y-4,e.x-2+hp_w,e.y-3,11)
+
+  if e.etype=="boss" then
+   -- boss: large pulsing circle
+   local pulse=sin(time()*3)*1
+   circfill(e.x,e.y,5+pulse,14)
+   circfill(e.x,e.y,3,15)
+   -- boss hp bar (wider)
+   local hp_w=12*e.hp/e.max_hp
+   rectfill(e.x-6,e.y-8,e.x-6+hp_w,e.y-6,11)
+   rect(e.x-6,e.y-8,e.x+6,e.y-6,0)
+  elseif e.etype=="elite" then
+   -- elite: larger yellow diamond
+   local c=e.slowed>0 and 1 or 10
+   line(e.x,e.y-3,e.x+3,e.y,c)
+   line(e.x+3,e.y,e.x,e.y+3,c)
+   line(e.x,e.y+3,e.x-3,e.y,c)
+   line(e.x-3,e.y,e.x,e.y-3,c)
+   pset(e.x,e.y,9)
+   -- elite hp bar
+   local hp_w=6*e.hp/e.max_hp
+   rectfill(e.x-3,e.y-5,e.x-3+hp_w,e.y-4,11)
+  else
+   -- normal: red square
+   rectfill(e.x-2,e.y-2,e.x+2,e.y+2,col)
+   -- hp bar
+   local hp_w=4*e.hp/e.max_hp
+   rectfill(e.x-2,e.y-4,e.x-2+hp_w,e.y-3,11)
+  end
  end
 end
 
