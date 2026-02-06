@@ -51,6 +51,10 @@ enemy_types={
  swarm={spd=1.1,hp=0.4,armor=0,col=9,sz=1}
 }
 
+-- tower targeting modes
+tgt_modes={"near","strong","fast"}
+tgt_icons={"\x97","\x96","\x8b"} -- symbols for each mode
+
 -- collections
 grid={}
 deck={}
@@ -154,6 +158,18 @@ function upgrade_tower(stat)
   show_msg("+1 rng")
  end
  sfx(1)
+ return true
+end
+
+-- cycle tower targeting mode
+function cycle_target_mode()
+ local tile=grid[cur_y][cur_x]
+ if tile.type!=2 or not tile.occupant then
+  return false
+ end
+ local t=tile.occupant
+ t.tgt_mode=(t.tgt_mode%3)+1
+ show_msg("target:"..tgt_modes[t.tgt_mode])
  return true
 end
 
@@ -300,7 +316,8 @@ function play_card()
   gx=cur_x,
   gy=cur_y,
   def=def,
-  reload=0
+  reload=0,
+  tgt_mode=1 -- 1=near, 2=strong, 3=fast
  }
  tile.occupant=unit
  add(towers,unit)
@@ -467,10 +484,17 @@ function update_plan()
   return
  end
 
- -- cursor movement
+ -- cursor movement (up cycles target mode if on tower)
  if btnp(0) then cur_x=max(0,cur_x-1) end
  if btnp(1) then cur_x=min(9,cur_x+1) end
- if btnp(2) then cur_y=max(0,cur_y-1) end
+ if btnp(2) then
+  local tile=grid[cur_y][cur_x]
+  if tile.type==2 and tile.occupant then
+   cycle_target_mode()
+  else
+   cur_y=max(0,cur_y-1)
+  end
+ end
  if btnp(3) then cur_y=min(9,cur_y+1) end
 
  -- card selection (left/right while holding down)
@@ -822,17 +846,31 @@ function update_tower(t)
   return
  end
 
- -- find nearest enemy in range
+ -- find target based on targeting mode
  local target=nil
- local best_dist=stats.rng+1
+ local best_val=nil
+ local mode=t.tgt_mode or 1
 
  for e in all(enemies) do
   local dx=e.x-px
   local dy=e.y-py
   local d=sqrt(dx*dx+dy*dy)
-  if d<=stats.rng and d<best_dist then
-   best_dist=d
-   target=e
+  if d<=stats.rng then
+   local val
+   if mode==1 then
+    -- nearest: lowest distance
+    val=-d
+   elseif mode==2 then
+    -- strongest: highest hp
+    val=e.hp
+   else
+    -- fastest: highest speed
+    val=e.spd
+   end
+   if best_val==nil or val>best_val then
+    best_val=val
+    target=e
+   end
   end
  end
 
@@ -1239,6 +1277,11 @@ function draw_towers()
   for i=1,min(tile.buff_rng,3) do
    pset(px+8-i,py+7,12)
   end
+  -- targeting mode indicator (top right corner)
+  if t.tgt_mode and t.tgt_mode>1 then
+   local tcol=t.tgt_mode==2 and 8 or 11 -- red for strong, yellow for fast
+   pset(px+7,py,tcol)
+  end
 
   -- aoe pulse effect
   if t.aoe_pulse and t.aoe_pulse>0 then
@@ -1436,7 +1479,10 @@ function draw_hand_ui()
  -- instructions (right side)
  local tile=grid[cur_y][cur_x]
  if tile.type==2 then
-  print("z:+dmg x:+rng",72,93,6)
+  -- show current targeting mode
+  local t=tile.occupant
+  local tmode=t and t.tgt_mode or 1
+  print("\x83:"..tgt_modes[tmode],72,93,6)
  elseif tile.type==3 then
   print("z:play x:sell",72,93,6)
  else
