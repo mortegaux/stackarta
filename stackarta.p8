@@ -445,11 +445,6 @@ function _update()
 end
 
 function update_plan()
- -- deck viewer toggle (up button)
- if btnp(2) and not btn(3) then
-  show_deck=not show_deck
- end
-
  -- if deck viewer open
  if show_deck then
   -- x: mulligan from deck viewer
@@ -460,15 +455,22 @@ function update_plan()
    return
   end
   -- any other button closes it
-  if btnp(4) or btnp(0) or btnp(1) or btnp(3) then
+  if btnp(4) or btnp(0) or btnp(1) or btnp(2) or btnp(3) then
    show_deck=false
   end
+  return
+ end
+
+ -- deck viewer toggle (z + up)
+ if btn(4) and btnp(2) then
+  show_deck=true
   return
  end
 
  -- cursor movement
  if btnp(0) then cur_x=max(0,cur_x-1) end
  if btnp(1) then cur_x=min(9,cur_x+1) end
+ if btnp(2) then cur_y=max(0,cur_y-1) end
  if btnp(3) then cur_y=min(9,cur_y+1) end
 
  -- card selection (left/right while holding down)
@@ -1110,7 +1112,7 @@ function draw_deck_viewer()
  else
   print("mulligan used",34,78,5)
  end
- print("z to close",40,84,5)
+ print("any key to close",28,84,5)
 end
 
 function draw_victory_choice()
@@ -1565,7 +1567,7 @@ function draw_title()
 
  print("\x97 place towers",32,95,10)
  print("\x8e burn for buffs",30,102,8)
- print("\x83 deck \x8b upgrade",30,109,5)
+ print("z+\x83 deck",42,109,5)
 
  -- high score (if any)
  if best_wave>0 then
