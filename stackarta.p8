@@ -1362,7 +1362,7 @@ function draw_context_panel()
     mx+=5
    end
   end
-  print("\x94+\x83\x91=cards",2,119,5)
+  print("\x83=cards",2,119,5)
  end
 end
 
