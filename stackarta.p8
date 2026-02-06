@@ -1209,12 +1209,12 @@ function draw_victory_choice()
 end
 
 function draw_grid()
- -- grid lines
+ -- grid lines (subtle dark blue)
  for i=0,10 do
   local x=grid_ox+i*tile_sz
   local y=grid_oy+i*tile_sz
-  line(x,grid_oy,x,grid_oy+80,5)
-  line(grid_ox,y,grid_ox+80,y,5)
+  line(x,grid_oy,x,grid_oy+80,1)
+  line(grid_ox,y,grid_ox+80,y,1)
  end
 
  -- tile buffs (pips)
