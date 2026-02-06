@@ -22,6 +22,9 @@ kills=0
 paused=false
 difficulty=2 -- 1=easy, 2=normal, 3=hard
 diff_names={"easy","normal","hard"}
+mulligan_used=false -- once per wave
+show_deck=false -- deck viewer toggle
+endless_mode=false -- continue after wave 10
 
 -- card definitions
 -- rar: 1=common, 2=rare, 3=legendary
@@ -84,6 +87,9 @@ function start_game()
  core_hp=10
  kills=0
  paused=false
+ mulligan_used=false
+ show_deck=false
+ endless_mode=false
  grid={}
  deck={}
  hand={}
@@ -98,6 +104,57 @@ function start_game()
  draw_hand(3)
  update_pathfinding()
  music(0) -- restart music
+end
+
+-- mulligan: discard hand and redraw (costs 1 energy, once per wave)
+function mulligan()
+ if mulligan_used then
+  show_msg("already mulled")
+  return false
+ end
+ if energy<1 then
+  show_msg("need 1 nrg")
+  return false
+ end
+ if #hand==0 then
+  show_msg("no cards")
+  return false
+ end
+ -- discard hand
+ for c in all(hand) do
+  add(discard,c)
+ end
+ hand={}
+ -- pay cost and redraw
+ energy-=1
+ draw_hand(3)
+ mulligan_used=true
+ sfx(1)
+ show_msg("mulligan!")
+ return true
+end
+
+-- upgrade tower: spend energy to add +1 dmg or +1 rng
+function upgrade_tower(stat)
+ local tile=grid[cur_y][cur_x]
+ if tile.type!=2 then
+  show_msg("no tower")
+  return false
+ end
+ if energy<2 then
+  show_msg("need 2 nrg")
+  return false
+ end
+ energy-=2
+ if stat=="dmg" then
+  tile.buff_dmg+=1
+  show_msg("+1 dmg")
+ else
+  tile.buff_rng+=1
+  show_msg("+1 rng")
+ end
+ sfx(1)
+ return true
 end
 
 function save_highscore()
@@ -370,14 +427,48 @@ function _update()
   update_wave()
  elseif state=="reward" then
   update_reward()
+ elseif state=="victory_choice" then
+  -- z: end game, x: endless mode
+  if btnp(4) then
+   state="gameover"
+   music(-1)
+  elseif btnp(5) then
+   endless_mode=true
+   mulligan_used=false
+   energy=max_energy+flr(wave_num/5)
+   draw_hand(3)
+   state="reward"
+   init_reward()
+   show_msg("endless mode!")
+  end
  end
 end
 
 function update_plan()
+ -- deck viewer toggle (up button)
+ if btnp(2) and not btn(3) then
+  show_deck=not show_deck
+ end
+
+ -- if deck viewer open
+ if show_deck then
+  -- x: mulligan from deck viewer
+  if btnp(5) then
+   if mulligan() then
+    show_deck=false
+   end
+   return
+  end
+  -- any other button closes it
+  if btnp(4) or btnp(0) or btnp(1) or btnp(3) then
+   show_deck=false
+  end
+  return
+ end
+
  -- cursor movement
  if btnp(0) then cur_x=max(0,cur_x-1) end
  if btnp(1) then cur_x=min(9,cur_x+1) end
- if btnp(2) then cur_y=max(0,cur_y-1) end
  if btnp(3) then cur_y=min(9,cur_y+1) end
 
  -- card selection (left/right while holding down)
@@ -388,24 +479,35 @@ function update_plan()
 
  -- play card (o button)
  if btnp(4) then
-  play_card()
+  local tile=grid[cur_y][cur_x]
+  -- if on tower, upgrade dmg
+  if tile.type==2 then
+   upgrade_tower("dmg")
+  else
+   play_card()
+  end
  end
 
- -- x button: sell tower or burn card
+ -- x button: context-sensitive
  if btnp(5) then
   local tile=grid[cur_y][cur_x]
-  if tile.type==2 or tile.type==3 then
+  if tile.type==2 then
+   -- on tower: tap for upgrade rng, z+x for sell
+   if btn(4) then
+    sell_tower()
+   else
+    upgrade_tower("rng")
+   end
+  elseif tile.type==3 then
    sell_tower()
   else
    burn_card()
   end
  end
 
- -- start wave when hand is empty or press both buttons
- if #hand==0 or (btn(4) and btn(5)) then
-  if #hand==0 then
-   start_wave()
-  end
+ -- start wave when hand is empty
+ if #hand==0 then
+  start_wave()
  end
 end
 
@@ -419,11 +521,14 @@ diff_mult={
 -- get wave info for preview (returns table)
 function get_wave_info(w)
  local dm=diff_mult[difficulty]
- if w==5 then
-  return {cnt=flr(6*dm[3]),hp=flr(15*dm[1]),spd=0.3*dm[2],type="elite",mix={}}
+ -- special waves every 5 (elites) and every 10 (boss)
+ if w%10==5 then
+  local scale=1+flr(w/10)*0.5 -- harder elites in endless
+  return {cnt=flr(6*dm[3]*scale),hp=flr(15*dm[1]*scale),spd=0.3*dm[2],type="elite",mix={}}
  end
- if w==10 then
-  return {cnt=1,hp=flr(250*dm[1]),spd=0.2*dm[2],type="boss",mix={}}
+ if w%10==0 then
+  local scale=1+flr(w/10-1)*0.8 -- harder bosses in endless
+  return {cnt=1,hp=flr(250*dm[1]*scale),spd=0.2*dm[2],type="boss",mix={}}
  end
  -- enemy mix based on wave
  local mix={"normal"}
@@ -676,8 +781,10 @@ function update_enemy(e)
   core_hp-=1
   e.hp=0
   e.leaked=true -- not a kill
-  shake=6
+  shake=12 -- intense screen shake
   sfx(2) -- core hit sound
+  -- spawn warning particles at core
+  spawn_particles(core_px,core_py,8,8)
  end
 end
 
@@ -776,18 +883,20 @@ end
 
 function end_wave()
  wave_num+=1
- if wave_num>10 then
-  state="gameover"
-  music(-1) -- stop music
+
+ -- wave 10 complete: offer endless mode or victory
+ if wave_num==11 and not endless_mode then
+  state="victory_choice"
   sfx(6) -- victory fanfare
   save_highscore()
-  msg="victory!"
-  msg_t=9999
   return
  end
 
  -- refill energy
  energy=max_energy+flr(wave_num/5)
+
+ -- reset mulligan
+ mulligan_used=false
 
  -- draw new hand
  draw_hand(3)
@@ -861,6 +970,11 @@ function _draw()
 
  if state=="gameover" then
   draw_gameover()
+  return
+ end
+
+ if state=="victory_choice" then
+  draw_victory_choice()
   return
  end
 
@@ -944,7 +1058,85 @@ function _draw()
   print(msg,mx,60,7)
  end
 
+ -- deck viewer overlay
+ if show_deck and state=="plan" then
+  draw_deck_viewer()
+ end
+
  camera(0,0)
+end
+
+function draw_deck_viewer()
+ rectfill(10,15,118,85,0)
+ rect(10,15,118,85,7)
+ rect(11,16,117,84,5)
+ print("deck ("..#deck+#discard.." cards)",30,18,7)
+
+ -- count cards by type
+ local counts={}
+ for c in all(deck) do
+  local n=c.def.name
+  counts[n]=(counts[n] or 0)+1
+ end
+ for c in all(discard) do
+  local n=c.def.name
+  counts[n]=(counts[n] or 0)+1
+ end
+
+ -- display counts
+ local y=28
+ local x=14
+ local col=0
+ for _,def in ipairs(card_defs) do
+  local cnt=counts[def.name] or 0
+  if cnt>0 then
+   print(def.name..":"..cnt,x,y,def.col)
+   col+=1
+   if col>=2 then
+    col=0
+    y+=8
+    x=14
+   else
+    x=68
+   end
+  end
+ end
+
+ -- show deck/discard split
+ print("draw:"..#deck.." disc:"..#discard,24,72,6)
+ -- mulligan option
+ if not mulligan_used and #hand>0 then
+  print("x: mulligan (1 nrg)",22,78,10)
+ else
+  print("mulligan used",34,78,5)
+ end
+ print("z to close",40,84,5)
+end
+
+function draw_victory_choice()
+ cls(0)
+
+ -- celebration particles
+ for i=0,20 do
+  local x=rnd(128)
+  local y=rnd(60)
+  pset(x,y,rnd(16))
+ end
+
+ rectfill(14,20,114,70,1)
+ rect(14,20,114,70,11)
+ rect(15,21,113,69,10)
+
+ print("victory!",46,25,11)
+ print("core defended!",32,35,7)
+ print("wave 10 complete",28,45,6)
+
+ print("z: end game",40,58,7)
+ print("x: endless mode",32,66,10)
+
+ -- stats below
+ print("kills: "..kills,48,80,6)
+ print("["..diff_names[difficulty].."]",48,90,6)
 end
 
 function draw_grid()
@@ -1156,7 +1348,9 @@ function draw_ui()
 
  -- wave indicator (right)
  rectfill(119,1,127,8,0)
- print(wave_num,121,2,7)
+ local wcol=7
+ if endless_mode then wcol=10 end
+ print(wave_num,121,2,wcol)
 
  -- hand (bottom)
  if state=="plan" then
@@ -1213,6 +1407,9 @@ function draw_hand_ui()
  rectfill(0,91,127,127,1)
  line(0,91,127,91,5)
 
+ -- deck count (top left of hand panel)
+ print("\x83"..#deck+#discard,2,93,5)
+
  if #hand==0 then
   print("- wave starts -",32,108,5)
   return
@@ -1236,10 +1433,16 @@ function draw_hand_ui()
 
  -- instructions (right side)
  local tile=grid[cur_y][cur_x]
- if tile.type==2 or tile.type==3 then
+ if tile.type==2 then
+  print("z:+dmg x:+rng",72,93,6)
+ elseif tile.type==3 then
   print("z:play x:sell",72,93,6)
  else
   print("z:play x:burn",72,93,6)
+ end
+ -- mulligan hint
+ if not mulligan_used and #hand>0 then
+  print("\x8e",1,93,10) -- indicator for mulligan available
  end
 
  local y=100
@@ -1362,7 +1565,7 @@ function draw_title()
 
  print("\x97 place towers",32,95,10)
  print("\x8e burn for buffs",30,102,8)
- print("o+x pause",42,109,5)
+ print("\x83 deck \x8b upgrade",30,109,5)
 
  -- high score (if any)
  if best_wave>0 then
@@ -1382,26 +1585,31 @@ function draw_gameover()
  if core_hp<=0 then
   print("game over",44,25,8)
   print("wave "..wave_num,48,35,7)
+  if endless_mode then
+   print("(endless)",46,42,10)
+  end
  else
   print("victory!",46,25,11)
   print("core defended!",32,35,7)
  end
  -- difficulty and stats
- print("["..diff_names[difficulty].."]",48,45,dcol[difficulty])
- print("enemies slain: "..kills,28,55,6)
+ local dy=core_hp<=0 and 50 or 45
+ print("["..diff_names[difficulty].."]",48,dy,dcol[difficulty])
+ print("enemies slain: "..kills,28,dy+10,6)
 
  -- high scores
- rectfill(24,65,104,95,1)
- rect(24,65,104,95,5)
- print("- best -",48,68,6)
- print("wave: "..best_wave,36,78,7)
- print("kills: "..best_kills,66,78,7)
+ local hy=core_hp<=0 and 70 or 65
+ rectfill(24,hy,104,hy+30,1)
+ rect(24,hy,104,hy+30,5)
+ print("- best -",48,hy+3,6)
+ print("wave: "..best_wave,36,hy+13,7)
+ print("kills: "..best_kills,66,hy+13,7)
  -- new record indicator
  if wave_num>=best_wave or kills>=best_kills then
-  print("*new*",52,88,10)
+  print("*new*",52,hy+23,10)
  end
 
- print("z to restart",40,105,5)
+ print("z to restart",40,hy+40,5)
 
  if btnp(4) then
   start_game()
