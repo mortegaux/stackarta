@@ -1140,20 +1140,36 @@ end
 
 function draw_hand_ui()
  -- hand panel background
- rectfill(0,90,127,127,1)
- line(0,90,127,90,5)
-
- -- instructions (context-sensitive)
- local tile=grid[cur_y][cur_x]
- if tile.type==2 or tile.type==3 then
-  print("z:play x:sell",38,92,6)
- else
-  print("z:play x:burn",38,92,6)
- end
+ rectfill(0,91,127,127,1)
+ line(0,91,127,91,5)
 
  if #hand==0 then
   print("- wave starts -",32,108,5)
   return
+ end
+
+ -- card stats preview (top line)
+ local card=hand[cur_sel]
+ local def=card.def
+ local stats=""
+ if def.type=="tower" then
+  stats="d:"..def.dmg.." r:"..def.rng.." f:"..def.rate
+  if def.aoe then stats=stats.." aoe" end
+ elseif def.type=="trap" then
+  if def.name=="slower" then stats="slows 50%"
+  elseif def.name=="spike" then stats="d:"..def.dmg.." once" end
+ elseif def.type=="boost" then
+  if def.dmg>0 then stats="+"..def.dmg.."dmg" end
+  if def.rng>0 then stats=stats.."+"..def.rng.."rng" end
+ end
+ print(stats,4,93,5)
+
+ -- instructions (right side)
+ local tile=grid[cur_y][cur_x]
+ if tile.type==2 or tile.type==3 then
+  print("z:play x:sell",72,93,6)
+ else
+  print("z:play x:burn",72,93,6)
  end
 
  local y=100
