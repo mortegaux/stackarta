@@ -63,6 +63,7 @@ discard={}
 towers={}
 enemies={}
 particles={}
+dmg_nums={} -- floating damage numbers
 
 -- cursor
 cur_x=5
@@ -101,6 +102,7 @@ function start_game()
  towers={}
  enemies={}
  particles={}
+ dmg_nums={}
  cur_x=5
  cur_y=5
  init_grid()
@@ -664,8 +666,9 @@ function update_wave()
   end
  end
 
- -- update particles
+ -- update particles and damage numbers
  update_particles()
+ update_dmg_nums()
 
  -- check wave complete
  if spawned>=wave_cnt and #enemies==0 then
@@ -740,7 +743,9 @@ function update_enemy(e)
   end
   -- spike trap deals damage once then disappears
   if trap.def.name=="spike" and not trap.used then
-   e.hp-=trap.def.dmg+tile.buff_dmg
+   local dmg=trap.def.dmg+tile.buff_dmg
+   e.hp-=dmg
+   spawn_dmg_num(e.x,e.y,dmg,8) -- red for spike
    trap.used=true
    -- remove spike from grid
    tile.type=0
@@ -834,6 +839,7 @@ function update_tower(t)
    if d<=stats.rng then
     local dmg=max(1,stats.dmg-(e.armor or 0))
     e.hp-=dmg
+    spawn_dmg_num(e.x,e.y,dmg,9) -- orange for aoe
     hit_any=true
    end
   end
@@ -877,6 +883,7 @@ function update_tower(t)
  if target then
   local dmg=max(1,stats.dmg-(target.armor or 0))
   target.hp-=dmg
+  spawn_dmg_num(target.x,target.y,dmg,7)
   t.reload=stats.rate
   t.last_target=target
   t.fire_t=4
@@ -918,6 +925,38 @@ function draw_particles()
   local col=p.col
   if p.life<5 then col=5 end -- fade to dark
   pset(p.x,p.y,col)
+ end
+end
+
+-- floating damage numbers
+function spawn_dmg_num(x,y,dmg,col)
+ col=col or 7
+ add(dmg_nums,{
+  x=x+rnd(4)-2,
+  y=y,
+  dmg=dmg,
+  col=col,
+  life=25
+ })
+end
+
+function update_dmg_nums()
+ for i=#dmg_nums,1,-1 do
+  local d=dmg_nums[i]
+  d.y-=0.5 -- float up
+  d.life-=1
+  if d.life<=0 then
+   deli(dmg_nums,i)
+  end
+ end
+end
+
+function draw_dmg_nums()
+ for d in all(dmg_nums) do
+  local col=d.col
+  if d.life<8 then col=6 end -- fade
+  if d.life<4 then col=5 end
+  print(d.dmg,d.x,d.y,col)
  end
 end
 
@@ -1022,6 +1061,7 @@ function _draw()
  draw_towers()
  draw_enemies()
  draw_particles()
+ draw_dmg_nums()
  draw_cursor()
  draw_ui()
 
