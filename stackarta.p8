@@ -39,6 +39,15 @@ card_defs={
 
 -- wave scaling (dynamic)
 
+-- enemy type definitions
+-- spd_mult, hp_mult, armor, col, size
+enemy_types={
+ normal={spd=1,hp=1,armor=0,col=8,sz=2},
+ scout={spd=1.6,hp=0.5,armor=0,col=11,sz=1},
+ tank={spd=0.5,hp=2.5,armor=1,col=4,sz=3},
+ swarm={spd=1.1,hp=0.4,armor=0,col=9,sz=1}
+}
+
 -- collections
 grid={}
 deck={}
@@ -411,16 +420,22 @@ diff_mult={
 function get_wave_info(w)
  local dm=diff_mult[difficulty]
  if w==5 then
-  return {cnt=flr(6*dm[3]),hp=flr(15*dm[1]),spd=0.3*dm[2],type="elite"}
+  return {cnt=flr(6*dm[3]),hp=flr(15*dm[1]),spd=0.3*dm[2],type="elite",mix={}}
  end
  if w==10 then
-  return {cnt=1,hp=flr(250*dm[1]),spd=0.2*dm[2],type="boss"}
+  return {cnt=1,hp=flr(250*dm[1]),spd=0.2*dm[2],type="boss",mix={}}
  end
+ -- enemy mix based on wave
+ local mix={"normal"}
+ if w>=2 then add(mix,"scout") end -- scouts from wave 2
+ if w>=4 then add(mix,"tank") end  -- tanks from wave 4
+ if w>=6 then add(mix,"swarm") end -- swarms from wave 6
  return {
   cnt=flr((5+(w*2))*dm[3]),
   hp=flr(2*(1.2^(w-1))*dm[1]),
   spd=min((0.4+(w*0.05))*dm[2],1.4),
-  type="normal"
+  type="normal",
+  mix=mix
  }
 end
 
@@ -430,6 +445,7 @@ function init_wave(w)
  wave_hp=info.hp
  wave_spd=info.spd
  wave_type=info.type
+ wave_mix=info.mix
  -- spawn delay
  if w==5 then
   spawn_delay=90
@@ -504,10 +520,14 @@ function update_wave()
     kills+=1
    end
    -- particle color based on enemy type
-   local col=8 -- red for normal
+   local edef=enemy_types[e.etype] or enemy_types.normal
+   local col=edef.col
    local cnt=6
-   if e.etype=="elite" then col=10 cnt=10
-   elseif e.etype=="boss" then col=14 cnt=20 end
+   if e.etype=="elite" then cnt=10
+   elseif e.etype=="boss" then cnt=20
+   elseif e.etype=="swarm" then cnt=3
+   elseif e.etype=="tank" then cnt=12
+   end
    spawn_particles(e.x,e.y,col,cnt)
    deli(enemies,i)
   end
@@ -541,15 +561,34 @@ function spawn_enemy()
  local px=grid_ox+gx*tile_sz+4
  local py=grid_oy+gy*tile_sz+4
 
- add(enemies,{
-  x=px,y=py,
-  gx=gx,gy=gy,
-  hp=wave_hp,
-  max_hp=wave_hp,
-  spd=wave_spd,
-  slowed=0,
-  etype=wave_type
- })
+ -- pick enemy type from wave mix
+ local etype=wave_type
+ if wave_mix and #wave_mix>0 then
+  etype=wave_mix[flr(rnd(#wave_mix))+1]
+ end
+ local edef=enemy_types[etype] or enemy_types.normal
+
+ -- apply type multipliers
+ local hp=flr(wave_hp*edef.hp)
+ local spd=wave_spd*edef.spd
+
+ -- swarm spawns 3 enemies at once
+ local count=1
+ if etype=="swarm" then count=3 end
+
+ for i=1,count do
+  local ox=(i-1)*4 -- offset for swarm cluster
+  add(enemies,{
+   x=px+ox,y=py,
+   gx=gx,gy=gy,
+   hp=hp,
+   max_hp=hp,
+   spd=spd,
+   slowed=0,
+   etype=etype,
+   armor=edef.armor
+  })
+ end
 end
 
 function update_enemy(e)
@@ -660,7 +699,8 @@ function update_tower(t)
    local dy=e.y-py
    local d=sqrt(dx*dx+dy*dy)
    if d<=stats.rng then
-    e.hp-=stats.dmg
+    local dmg=max(1,stats.dmg-(e.armor or 0))
+    e.hp-=dmg
     hit_any=true
    end
   end
@@ -688,7 +728,8 @@ function update_tower(t)
  end
 
  if target then
-  target.hp-=stats.dmg
+  local dmg=max(1,stats.dmg-(target.armor or 0))
+  target.hp-=dmg
   t.reload=stats.rate
   t.last_target=target
   t.fire_t=4
@@ -1022,7 +1063,8 @@ end
 
 function draw_enemies()
  for e in all(enemies) do
-  local col=8
+  local edef=enemy_types[e.etype] or enemy_types.normal
+  local col=edef.col
   if e.slowed>0 then col=1 end
 
   if e.etype=="boss" then
@@ -1045,6 +1087,22 @@ function draw_enemies()
    -- elite hp bar
    local hp_w=6*e.hp/e.max_hp
    rectfill(e.x-3,e.y-5,e.x-3+hp_w,e.y-4,11)
+  elseif e.etype=="scout" then
+   -- scout: small fast triangle
+   line(e.x,e.y-2,e.x+2,e.y+1,col)
+   line(e.x+2,e.y+1,e.x-2,e.y+1,col)
+   line(e.x-2,e.y+1,e.x,e.y-2,col)
+  elseif e.etype=="tank" then
+   -- tank: large armored square with border
+   rectfill(e.x-3,e.y-3,e.x+3,e.y+3,col)
+   rect(e.x-3,e.y-3,e.x+3,e.y+3,5)
+   pset(e.x,e.y,0) -- armor core
+   -- tank hp bar
+   local hp_w=6*e.hp/e.max_hp
+   rectfill(e.x-3,e.y-5,e.x-3+hp_w,e.y-4,11)
+  elseif e.etype=="swarm" then
+   -- swarm: tiny dot
+   circfill(e.x,e.y,1,col)
   else
    -- normal: red square
    rectfill(e.x-2,e.y-2,e.x+2,e.y+2,col)
@@ -1135,7 +1193,18 @@ function draw_ui()
   print("wave "..wave_num,89,106,wcol)
   print("x"..info.cnt,89,113,7)
   print("hp:"..flr(info.hp),105,113,8)
-  print("spd:"..info.spd,89,120,12)
+  -- show enemy type icons
+  if info.mix and #info.mix>0 then
+   local mx=89
+   for i,et in ipairs(info.mix) do
+    local ec=enemy_types[et].col
+    pset(mx,121,ec)
+    pset(mx+1,121,ec)
+    mx+=4
+   end
+  else
+   print("spd:"..info.spd,89,120,12)
+  end
  end
 end
 
