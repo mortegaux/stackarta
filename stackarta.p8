@@ -282,6 +282,9 @@ function burn_card()
   return false
  end
 
+ -- cannot burn while in sell confirm
+ if sell_confirm then return false end
+
  -- apply buff based on card type
  local dmg_add=0
  local rng_add=0
@@ -395,7 +398,23 @@ function _update()
  end
 end
 
+sell_confirm=false
+
 function update_plan()
+ -- sell confirmation mode
+ if sell_confirm then
+  if btnp(4) then
+   -- z confirms sell
+   sell_tower()
+   sell_confirm=false
+  elseif btnp(5) or btnp(0) or btnp(1) or btnp(2) or btnp(3) then
+   -- x or any movement cancels
+   sell_confirm=false
+   show_msg("cancelled")
+  end
+  return
+ end
+
  -- cursor movement (d-pad)
  if btnp(0) then cur_x=max(0,cur_x-1) end
  if btnp(1) then cur_x=min(9,cur_x+1) end
@@ -409,19 +428,21 @@ function update_plan()
   end
  end
 
- -- z: play card
+ -- z: play card or sell (with confirm)
  if btnp(4) then
-  play_card()
- end
-
- -- x: burn (empty tile) or sell (occupied)
- if btnp(5) then
   local tile=grid[cur_y][cur_x]
   if tile.type==2 or tile.type==3 then
-   sell_tower()
+   -- tower/trap: enter sell confirm
+   sell_confirm=true
+   show_msg("sell? z=yes x=no")
   else
-   burn_card()
+   play_card()
   end
+ end
+
+ -- x: always burn
+ if btnp(5) then
+  burn_card()
  end
 
  -- start wave when hand is empty
@@ -1294,7 +1315,11 @@ function draw_context_panel()
   print(t.def.name,2,95,t.def.col)
   print("dmg:"..stats.dmg,2,103,8)
   print("rng:"..stats.rng,2,110,12)
-  print("x to sell",2,119,5)
+  if sell_confirm then
+   print("sell? z/x",2,119,8)
+  else
+   print("z to sell",2,119,5)
+  end
  elseif tile.type==3 and tile.occupant then
   -- trap info
   local t=tile.occupant
@@ -1304,7 +1329,11 @@ function draw_context_panel()
   elseif t.def.name=="spike" then
    print("dmg:"..t.def.dmg+tile.buff_dmg,2,103,8)
   end
-  print("x to sell",2,119,5)
+  if sell_confirm then
+   print("sell? z/x",2,119,8)
+  else
+   print("z to sell",2,119,5)
+  end
  elseif tile.buff_dmg>0 or tile.buff_rng>0 or tile.heat>0 then
   -- buffed tile info
   print("tile",2,95,6)
@@ -1449,47 +1478,55 @@ function draw_title()
   pset(x,y,5)
  end
 
- -- title box
- rectfill(18,18,110,50,0)
- rect(18,18,110,50,5)
-
- -- title text
+ -- title at 2x scale with outline
  local bounce=sin(title_t*0.05)*2
- print("stackarta",36,24+bounce,12)
- print("stackarta",35,23+bounce,7)
+ local tx=28  -- centered for 72px wide (9×8)
+ local ty=6+bounce
+ -- dark outline
+ for ox=-1,1 do
+  for oy=-1,1 do
+   if ox!=0 or oy!=0 then
+    print("\^w\^tstackarta",tx+ox,ty+oy,1)
+   end
+  end
+ end
+ print("\^w\^tstackarta",tx+1,ty+1,12)
+ print("\^w\^tstackarta",tx,ty,7)
 
- -- tagline
- print("burn the hand",32,38,6)
- print("build the land",30,46,5)
+ -- tagline (centered)
+ print("burn the hand",38,24,6)
+ print("build the land",36,32,5)
 
  -- decorative core
  local pulse=sin(title_t*0.1)*2
- circfill(64,66,5+pulse,14)
- circfill(64,66,3+pulse*0.5,15)
+ circfill(64,46,4+pulse,14)
+ circfill(64,46,2+pulse*0.5,15)
 
  -- difficulty selector
  local dcol={11,6,8}
- rectfill(32,78,96,90,0)
- rect(32,78,96,90,5)
- print("\139",36,82,6)
- print(diff_names[difficulty],52,82,dcol[difficulty])
- print("\145",88,82,6)
+ rectfill(28,56,100,66,0)
+ rect(28,56,100,66,5)
+ print("\139",32,59,6)
+ local dname=diff_names[difficulty]
+ print(dname,64-#dname*2,59,dcol[difficulty])
+ print("\145",92,59,6)
 
  -- tips
- rectfill(20,94,108,116,0)
- rect(20,94,108,116,5)
- print("z play  x burn/sell",26,98,6)
- print("move \139\145\x83\x94  down=cards",20,106,5)
+ rectfill(6,72,122,92,0)
+ rect(6,72,122,92,5)
+ print("z build/sell  x burn",24,76,6)
+ print("move \139\145\x83\x94  down=cards",22,84,5)
 
  -- high score
  if best_wave>0 then
-  print("best w"..best_wave.." k"..best_kills,36,120,5)
+  local hs="best w"..best_wave.." k"..best_kills
+  print(hs,64-#hs*2,98,5)
  end
 
  -- start prompt
  local blink=title_t%40<20
  if blink then
-  print("press z or x",36,125,7)
+  print("press z or x",40,108,7)
  end
 end
 
