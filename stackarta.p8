@@ -22,8 +22,6 @@ kills=0
 paused=false
 difficulty=2 -- 1=easy, 2=normal, 3=hard
 diff_names={"easy","normal","hard"}
-mulligan_used=false -- once per wave
-show_deck=false -- deck viewer toggle
 endless_mode=false -- continue after wave 10
 
 -- card definitions
@@ -92,8 +90,6 @@ function start_game()
  core_hp=10
  kills=0
  paused=false
- mulligan_used=false
- show_deck=false
  endless_mode=false
  grid={}
  deck={}
@@ -110,69 +106,6 @@ function start_game()
  draw_hand(3)
  update_pathfinding()
  music(0) -- restart music
-end
-
--- mulligan: discard hand and redraw (costs 1 energy, once per wave)
-function mulligan()
- if mulligan_used then
-  show_msg("already mulled")
-  return false
- end
- if energy<1 then
-  show_msg("need 1 nrg")
-  return false
- end
- if #hand==0 then
-  show_msg("no cards")
-  return false
- end
- -- discard hand
- for c in all(hand) do
-  add(discard,c)
- end
- hand={}
- -- pay cost and redraw
- energy-=1
- draw_hand(3)
- mulligan_used=true
- sfx(1)
- show_msg("mulligan!")
- return true
-end
-
--- upgrade tower: spend energy to add +1 dmg or +1 rng
-function upgrade_tower(stat)
- local tile=grid[cur_y][cur_x]
- if tile.type!=2 then
-  show_msg("no tower")
-  return false
- end
- if energy<2 then
-  show_msg("need 2 nrg")
-  return false
- end
- energy-=2
- if stat=="dmg" then
-  tile.buff_dmg+=1
-  show_msg("+1 dmg")
- else
-  tile.buff_rng+=1
-  show_msg("+1 rng")
- end
- sfx(1)
- return true
-end
-
--- cycle tower targeting mode
-function cycle_target_mode()
- local tile=grid[cur_y][cur_x]
- if tile.type!=2 or not tile.occupant then
-  return false
- end
- local t=tile.occupant
- t.tgt_mode=(t.tgt_mode%3)+1
- show_msg("target:"..tgt_modes[t.tgt_mode])
- return true
 end
 
 function save_highscore()
@@ -453,7 +386,6 @@ function _update()
    music(-1)
   elseif btnp(5) then
    endless_mode=true
-   mulligan_used=false
    energy=max_energy+flr(wave_num/5)
    draw_hand(3)
    state="reward"
@@ -464,69 +396,28 @@ function _update()
 end
 
 function update_plan()
- -- if deck viewer open
- if show_deck then
-  -- x: mulligan from deck viewer
-  if btnp(5) then
-   if mulligan() then
-    show_deck=false
-   end
-   return
-  end
-  -- any other button closes it
-  if btnp(4) or btnp(0) or btnp(1) or btnp(2) or btnp(3) then
-   show_deck=false
-  end
-  return
- end
-
- -- deck viewer toggle (z + up)
- if btn(4) and btnp(2) then
-  show_deck=true
-  return
- end
-
- -- cursor movement (up cycles target mode if on tower)
+ -- cursor movement (d-pad)
  if btnp(0) then cur_x=max(0,cur_x-1) end
  if btnp(1) then cur_x=min(9,cur_x+1) end
- if btnp(2) then
-  local tile=grid[cur_y][cur_x]
-  if tile.type==2 and tile.occupant then
-   cycle_target_mode()
+ if btnp(2) then cur_y=max(0,cur_y-1) end
+ if btnp(3) then
+  if cur_y>=9 and #hand>1 then
+   -- at bottom: cycle cards forward
+   cur_sel=cur_sel%#hand+1
   else
-   cur_y=max(0,cur_y-1)
+   cur_y=min(9,cur_y+1)
   end
  end
- if btnp(3) then cur_y=min(9,cur_y+1) end
 
- -- card selection (left/right while holding down)
- if btn(3) then
-  if btnp(0) then cur_sel=max(1,cur_sel-1) end
-  if btnp(1) then cur_sel=min(#hand,cur_sel+1) end
- end
-
- -- play card (o button)
+ -- z: play card
  if btnp(4) then
-  local tile=grid[cur_y][cur_x]
-  -- if on tower, upgrade dmg
-  if tile.type==2 then
-   upgrade_tower("dmg")
-  else
-   play_card()
-  end
+  play_card()
  end
 
- -- x button: context-sensitive
+ -- x: burn (empty tile) or sell (occupied)
  if btnp(5) then
   local tile=grid[cur_y][cur_x]
-  if tile.type==2 then
-   -- on tower: tap for upgrade rng, z+x for sell
-   if btn(4) then
-    sell_tower()
-   else
-    upgrade_tower("rng")
-   end
-  elseif tile.type==3 then
+  if tile.type==2 or tile.type==3 then
    sell_tower()
   else
    burn_card()
@@ -974,9 +865,6 @@ function end_wave()
  -- refill energy
  energy=max_energy+flr(wave_num/5)
 
- -- reset mulligan
- mulligan_used=false
-
  -- draw new hand
  draw_hand(3)
 
@@ -1132,56 +1020,7 @@ function _draw()
   print(msg,mx+4,58,7)
  end
 
- -- deck viewer overlay
- if show_deck and state=="plan" then
-  draw_deck_viewer()
- end
-
  camera(0,0)
-end
-
-function draw_deck_viewer()
- rectfill(14,18,114,82,0)
- rect(14,18,114,82,5)
- print("deck "..#deck+#discard,42,21,7)
-
- -- count cards by type
- local counts={}
- for c in all(deck) do
-  local n=c.def.name
-  counts[n]=(counts[n] or 0)+1
- end
- for c in all(discard) do
-  local n=c.def.name
-  counts[n]=(counts[n] or 0)+1
- end
-
- -- display counts in grid
- local y=30
- local x=18
- local col=0
- for _,def in ipairs(card_defs) do
-  local cnt=counts[def.name] or 0
-  if cnt>0 then
-   print(def.name.." "..cnt,x,y,def.col)
-   col+=1
-   if col>=2 then
-    col=0
-    y+=8
-    x=18
-   else
-    x=68
-   end
-  end
- end
-
- -- footer
- print("draw:"..#deck.." disc:"..#discard,30,68,6)
- if not mulligan_used and #hand>0 then
-  print("x:mulligan",42,76,10)
- else
-  print("mulligan used",38,76,5)
- end
 end
 
 function draw_victory_choice()
@@ -1455,7 +1294,7 @@ function draw_context_panel()
   print(t.def.name,2,95,t.def.col)
   print("dmg:"..stats.dmg,2,103,8)
   print("rng:"..stats.rng,2,110,12)
-  print("tgt:"..tgt_modes[t.tgt_mode or 1],2,117,6)
+  print("x to sell",2,119,5)
  elseif tile.type==3 and tile.occupant then
   -- trap info
   local t=tile.occupant
@@ -1465,6 +1304,7 @@ function draw_context_panel()
   elseif t.def.name=="spike" then
    print("dmg:"..t.def.dmg+tile.buff_dmg,2,103,8)
   end
+  print("x to sell",2,119,5)
  elseif tile.buff_dmg>0 or tile.buff_rng>0 or tile.heat>0 then
   -- buffed tile info
   print("tile",2,95,6)
@@ -1493,9 +1333,7 @@ function draw_context_panel()
     mx+=5
    end
   end
-  if not mulligan_used and #hand>0 then
-   print("z+\x83 deck",2,119,5)
-  end
+  print("\x94 down=cards",2,119,5)
  end
 end
 
@@ -1640,8 +1478,8 @@ function draw_title()
  -- tips
  rectfill(20,94,108,116,0)
  rect(20,94,108,116,5)
- print("z place  x burn",32,98,6)
- print("\139\145 move  \x83\x94 cards",28,106,5)
+ print("z play  x burn/sell",26,98,6)
+ print("move \139\145\x83\x94  down=cards",20,106,5)
 
  -- high score
  if best_wave>0 then
