@@ -980,19 +980,19 @@ function _draw()
   line(0,93,127,93,5)
   line(0,103,127,103,5)
   local remaining=wave_cnt-spawned+#enemies
-  -- wave label
+  -- wave label + remaining side by side
   local wlbl="wave "..wave_num
   local wcol=6
   if wave_type=="elite" then wlbl="elites" wcol=10
   elseif wave_type=="boss" then wlbl="boss" wcol=14 end
   print(wlbl,2,95,wcol)
-  -- enemy count
-  print("left:"..remaining,2,101,8)
-  -- progress bar
+  local rlbl=remaining.." left"
+  print(rlbl,126-#rlbl*4,95,8)
+  -- thin progress bar
   local prog=1-(remaining/max(wave_cnt,1))
-  rectfill(50,96,120,101,5)
-  rectfill(50,96,50+70*prog,101,11)
-  rect(50,96,120,101,6)
+  rectfill(2,100,120,101,5)
+  rectfill(2,100,2+118*prog,101,11)
+  rect(2,100,120,101,6)
  end
 
  if state=="reward" then
@@ -1362,7 +1362,7 @@ function draw_context_panel()
     mx+=5
    end
   end
-  print("\x94 down=cards",2,119,5)
+  print("\x94+\x83\x91=cards",2,119,5)
  end
 end
 
