@@ -1065,28 +1065,25 @@ function _draw()
  draw_cursor()
  draw_ui()
 
- -- wave status panel
+ -- wave status panel (during combat)
  if state=="wave" then
-  rectfill(0,90,127,99,1)
-  line(0,90,127,90,5)
+  rectfill(0,93,127,103,0)
+  line(0,93,127,93,5)
+  line(0,103,127,103,5)
   local remaining=wave_cnt-spawned+#enemies
-  -- show wave type
+  -- wave label
   local wlbl="wave "..wave_num
-  local wcol=7
-  if wave_type=="elite" then
-   wlbl="elites!"
-   wcol=10
-  elseif wave_type=="boss" then
-   wlbl="!! boss !!"
-   wcol=14
-  end
-  print(wlbl,4,92,wcol)
-  print("enemies:"..remaining,50,92,8)
+  local wcol=6
+  if wave_type=="elite" then wlbl="elites" wcol=10
+  elseif wave_type=="boss" then wlbl="boss" wcol=14 end
+  print(wlbl,2,95,wcol)
+  -- enemy count
+  print("left:"..remaining,2,101,8)
   -- progress bar
-  local prog=1-(remaining/(wave_cnt))
-  rectfill(100,92,124,97,5)
-  rectfill(100,92,100+24*prog,97,11)
-  rect(100,92,124,97,6)
+  local prog=1-(remaining/max(wave_cnt,1))
+  rectfill(50,96,120,101,5)
+  rectfill(50,96,50+70*prog,101,11)
+  rect(50,96,120,101,6)
  end
 
  if state=="reward" then
@@ -1095,47 +1092,44 @@ function _draw()
 
  -- boss warning overlay
  if boss_warn and boss_warn>0 then
-  -- flashing background
-  local flash=boss_warn%10<5
+  -- flashing border
+  local flash=boss_warn%8<4
   if flash then
-   rectfill(0,0,127,127,2)
+   rect(0,0,127,127,8)
+   rect(1,1,126,126,14)
   end
   -- warning box
-  rectfill(20,45,108,75,0)
-  rect(20,45,108,75,8)
-  rect(21,46,107,74,14)
+  rectfill(24,42,104,72,0)
+  rect(24,42,104,72,8)
   -- text
   local pulse=boss_warn%6<3
-  print("!! warning !!",34,50,pulse and 8 or 14)
-  print("boss incoming",34,60,7)
-  -- countdown dots
-  local dots=flr(boss_warn/30)+1
-  for i=1,dots do
-   circfill(54+i*8,70,2,14)
-  end
+  print("!! warning !!",36,47,pulse and 8 or 14)
+  print("boss incoming",36,57,7)
+  -- countdown bar
+  local bw=60*(boss_warn/90)
+  rectfill(34,65,34+bw,68,14)
  end
 
  -- pause overlay
  if paused and state=="wave" then
-  rectfill(30,45,98,80,0)
-  rect(30,45,98,80,7)
-  rect(31,46,97,79,5)
-  print("paused",50,50,7)
-  print("o+x: resume",40,62,6)
-  print("z: restart",43,70,6)
-  -- restart option
+  rectfill(34,40,94,75,0)
+  rect(34,40,94,75,5)
+  print("paused",52,44,7)
+  print("o+x resume",44,54,6)
+  print("z restart",48,64,6)
   if btnp(4) and not btn(5) then
    paused=false
    start_game()
   end
  end
 
- -- message
+ -- message (centered popup)
  if msg_t>0 and not paused then
-  rectfill(40,56,88,68,0)
-  rect(40,56,88,68,7)
-  local mx=64-#msg*2
-  print(msg,mx,60,7)
+  local mw=#msg*4+8
+  local mx=64-mw/2
+  rectfill(mx,54,mx+mw,66,0)
+  rect(mx,54,mx+mw,66,5)
+  print(msg,mx+4,58,7)
  end
 
  -- deck viewer overlay
@@ -1147,10 +1141,9 @@ function _draw()
 end
 
 function draw_deck_viewer()
- rectfill(10,15,118,85,0)
- rect(10,15,118,85,7)
- rect(11,16,117,84,5)
- print("deck ("..#deck+#discard.." cards)",30,18,7)
+ rectfill(14,18,114,82,0)
+ rect(14,18,114,82,5)
+ print("deck "..#deck+#discard,42,21,7)
 
  -- count cards by type
  local counts={}
@@ -1163,60 +1156,56 @@ function draw_deck_viewer()
   counts[n]=(counts[n] or 0)+1
  end
 
- -- display counts
- local y=28
- local x=14
+ -- display counts in grid
+ local y=30
+ local x=18
  local col=0
  for _,def in ipairs(card_defs) do
   local cnt=counts[def.name] or 0
   if cnt>0 then
-   print(def.name..":"..cnt,x,y,def.col)
+   print(def.name.." "..cnt,x,y,def.col)
    col+=1
    if col>=2 then
     col=0
     y+=8
-    x=14
+    x=18
    else
     x=68
    end
   end
  end
 
- -- show deck/discard split
- print("draw:"..#deck.." disc:"..#discard,24,72,6)
- -- mulligan option
+ -- footer
+ print("draw:"..#deck.." disc:"..#discard,30,68,6)
  if not mulligan_used and #hand>0 then
-  print("x: mulligan (1 nrg)",22,78,10)
+  print("x:mulligan",42,76,10)
  else
-  print("mulligan used",34,78,5)
+  print("mulligan used",38,76,5)
  end
- print("any key to close",28,84,5)
 end
 
 function draw_victory_choice()
  cls(0)
 
- -- celebration particles
- for i=0,20 do
+ -- celebration sparkles
+ for i=0,15 do
   local x=rnd(128)
-  local y=rnd(60)
-  pset(x,y,rnd(16))
+  local y=rnd(50)+10
+  pset(x,y,10+flr(rnd(3)))
  end
 
- rectfill(14,20,114,70,1)
- rect(14,20,114,70,11)
- rect(15,21,113,69,10)
+ rectfill(20,24,108,75,0)
+ rect(20,24,108,75,11)
 
- print("victory!",46,25,11)
- print("core defended!",32,35,7)
- print("wave 10 complete",28,45,6)
+ print("victory!",48,28,11)
+ print("core defended",36,38,7)
+ print("wave 10 clear",38,48,6)
 
- print("z: end game",40,58,7)
- print("x: endless mode",32,66,10)
+ rectfill(30,56,98,72,0)
+ print("z end",40,60,7)
+ print("x endless",68,60,10)
 
- -- stats below
- print("kills: "..kills,48,80,6)
- print("["..diff_names[difficulty].."]",48,90,6)
+ print("kills:"..kills.." ["..diff_names[difficulty].."]",28,82,5)
 end
 
 function draw_grid()
@@ -1413,251 +1402,250 @@ end
 
 function draw_ui()
  -- top bar background
- rectfill(0,0,127,9,1)
- line(0,9,127,9,5)
+ rectfill(0,0,127,10,0)
+ line(0,10,127,10,5)
 
- -- energy section (left)
- print("\x8b",1,2,10) -- lightning bolt
+ -- energy section (left) - compact pips
+ print("\x8b",2,2,10)
  for i=1,max_energy+2 do
-  local col=5 -- dark bg
-  if i<=energy then col=10 end -- yellow if filled
-  rectfill(8+i*5,2,8+i*5+3,6,col)
+  local col=5
+  if i<=energy then col=10 end
+  rectfill(9+i*4,3,9+i*4+2,6,col)
  end
 
- -- core hp section (center-right)
- print("\x96",68,2,8) -- heart
- rectfill(76,2,116,6,5) -- bg bar
- local hp_w=40*core_hp/max_core_hp
- rectfill(76,2,76+hp_w,6,8) -- hp bar
- rect(76,2,116,6,6) -- border
+ -- core hp section (center) - bar with number
+ local hpx=52
+ rectfill(hpx,2,hpx+30,7,5)
+ local hp_w=30*core_hp/max_core_hp
+ rectfill(hpx,2,hpx+hp_w,7,8)
+ rect(hpx,2,hpx+30,7,6)
+ -- hp number centered
+ local hp_str=core_hp.."/"..max_core_hp
+ print(hp_str,hpx+15-#hp_str*2,3,7)
 
- -- wave indicator (right)
- rectfill(119,1,127,8,0)
- local wcol=7
+ -- wave indicator (right) - with label
+ local wcol=6
  if endless_mode then wcol=10 end
- print(wave_num,121,2,wcol)
+ if wave_type=="elite" then wcol=10
+ elseif wave_type=="boss" then wcol=14 end
+ print("w",100,2,5)
+ print(wave_num,107,2,wcol)
+ -- kills counter
+ print("\x97"..kills,116,2,5)
 
  -- hand (bottom)
  if state=="plan" then
   draw_hand_ui()
+  draw_context_panel()
  end
+end
 
- -- tile info panel (bottom left)
- if state=="plan" then
-  local tile=grid[cur_y][cur_x]
-  if tile.buff_dmg>0 or tile.buff_rng>0 or tile.heat>0 then
-   rectfill(0,112,40,127,1)
-   rect(0,112,40,127,5)
-   local ty=114
-   if tile.buff_dmg>0 then
-    print("dmg+"..tile.buff_dmg,2,ty,8)
-    ty+=6
-   end
-   if tile.buff_rng>0 then
-    print("rng+"..tile.buff_rng,2,ty,12)
-    ty+=6
-   end
-   if tile.heat>0 then
-    print("heat:"..tile.heat,2,ty,9)
-   end
+-- unified context panel (bottom left)
+function draw_context_panel()
+ local tile=grid[cur_y][cur_x]
+
+ -- panel background
+ rectfill(0,93,42,127,0)
+ rect(0,93,42,127,5)
+
+ if tile.type==2 and tile.occupant then
+  -- tower info
+  local t=tile.occupant
+  local stats=get_tower_stats(t)
+  print(t.def.name,2,95,t.def.col)
+  print("dmg:"..stats.dmg,2,103,8)
+  print("rng:"..stats.rng,2,110,12)
+  print("tgt:"..tgt_modes[t.tgt_mode or 1],2,117,6)
+ elseif tile.type==3 and tile.occupant then
+  -- trap info
+  local t=tile.occupant
+  print(t.def.name,2,95,t.def.col)
+  if t.def.name=="slower" then
+   print("slows 50%",2,103,1)
+  elseif t.def.name=="spike" then
+   print("dmg:"..t.def.dmg+tile.buff_dmg,2,103,8)
   end
-
-  -- wave preview panel (bottom right)
+ elseif tile.buff_dmg>0 or tile.buff_rng>0 or tile.heat>0 then
+  -- buffed tile info
+  print("tile",2,95,6)
+  if tile.buff_dmg>0 then
+   print("dmg+"..tile.buff_dmg,2,103,8)
+  end
+  if tile.buff_rng>0 then
+   print("rng+"..tile.buff_rng,2,111,12)
+  end
+  if tile.heat>0 then
+   print("heat:"..tile.heat,2,119,9)
+  end
+ else
+  -- wave preview (default)
   local info=get_wave_info(wave_num)
   local wcol=6
   if info.type=="elite" then wcol=10
   elseif info.type=="boss" then wcol=14 end
-  rectfill(87,104,127,127,1)
-  rect(87,104,127,127,5)
-  print("wave "..wave_num,89,106,wcol)
-  print("x"..info.cnt,89,113,7)
-  print("hp:"..flr(info.hp),105,113,8)
-  -- show enemy type icons
+  print("next",2,95,5)
+  print("x"..info.cnt.." hp"..flr(info.hp),2,103,wcol)
+  -- enemy type dots
   if info.mix and #info.mix>0 then
-   local mx=89
+   local mx=2
    for i,et in ipairs(info.mix) do
-    local ec=enemy_types[et].col
-    pset(mx,121,ec)
-    pset(mx+1,121,ec)
-    mx+=4
+    rectfill(mx,112,mx+3,114,enemy_types[et].col)
+    mx+=5
    end
-  else
-   print("spd:"..info.spd,89,120,12)
+  end
+  if not mulligan_used and #hand>0 then
+   print("z+\x83 deck",2,119,5)
   end
  end
 end
 
 function draw_hand_ui()
  -- hand panel background
- rectfill(0,91,127,127,1)
- line(0,91,127,91,5)
-
- -- deck count (top left of hand panel)
- print("\x83"..#deck+#discard,2,93,5)
+ rectfill(44,93,127,127,0)
+ line(44,93,127,93,5)
+ rect(44,93,127,127,5)
 
  if #hand==0 then
-  print("- wave starts -",32,108,5)
+  print("wave starts",60,108,6)
   return
  end
 
- -- card stats preview (top line)
- local card=hand[cur_sel]
- local def=card.def
- local stats=""
- if def.type=="tower" then
-  stats="d:"..def.dmg.." r:"..def.rng.." f:"..def.rate
-  if def.aoe then stats=stats.." aoe" end
- elseif def.type=="trap" then
-  if def.name=="slower" then stats="slows 50%"
-  elseif def.name=="spike" then stats="d:"..def.dmg.." once" end
- elseif def.type=="boost" then
-  if def.dmg>0 then stats="+"..def.dmg.."dmg" end
-  if def.rng>0 then stats=stats.."+"..def.rng.."rng" end
- end
- print(stats,4,93,5)
-
- -- instructions (right side)
- local tile=grid[cur_y][cur_x]
- if tile.type==2 then
-  -- show current targeting mode
-  local t=tile.occupant
-  local tmode=t and t.tgt_mode or 1
-  print("\x83:"..tgt_modes[tmode],72,93,6)
- elseif tile.type==3 then
-  print("z:play x:sell",72,93,6)
- else
-  print("z:play x:burn",72,93,6)
- end
- -- mulligan hint
- if not mulligan_used and #hand>0 then
-  print("\x8e",1,93,10) -- indicator for mulligan available
- end
-
- local y=100
- local start_x=64-(#hand*18)/2
+ -- compact cards
+ local card_w=14
+ local card_h=18
+ local start_x=64-(#hand*card_w)/2+10
+ local y=106
 
  for i,card in ipairs(hand) do
-  local x=start_x+(i-1)*18
+  local x=start_x+(i-1)*card_w
   local cy=y
   local sel=i==cur_sel
 
-  -- card shadow
-  if sel then
-   cy=y-3
-   rectfill(x+1,cy+1,x+16,cy+23,0)
-  end
+  -- selected card rises
+  if sel then cy=y-4 end
 
   -- card bg
   local col=card.def.col
-  rectfill(x,cy,x+15,cy+21,col)
-  rect(x,cy,x+15,cy+21,sel and 7 or 5)
+  rectfill(x,cy,x+card_w-2,cy+card_h-1,col)
+  rect(x,cy,x+card_w-2,cy+card_h-1,sel and 7 or 5)
 
-  -- card type icon
-  local icon="\x8e" -- default
+  -- card type icon (small)
+  local icon="\x8e"
   if card.def.type=="tower" then icon="\x94"
   elseif card.def.type=="trap" then icon="\x97"
   elseif card.def.type=="boost" then icon="\x8b"
   end
   print(icon,x+1,cy+1,0)
 
-  -- card name
-  print(sub(card.def.name,1,5),x+1,cy+8,0)
+  -- card name (truncated)
+  print(sub(card.def.name,1,4),x+1,cy+8,0)
 
   -- cost badge
   local cost=card.def.cost
   if sel then
    cost=get_place_cost(cur_x,cur_y,card)
   end
-  circfill(x+12,cy+18,4,0)
-  print(cost,x+10,cy+16,10)
+  circfill(x+9,cy+14,3,0)
+  print(cost,x+7,cy+12,10)
+ end
 
-  -- selection arrow
-  if sel then
-   print("\x83",x+5,cy+24,7)
-  end
+ -- selected card tooltip (above cards)
+ local card=hand[cur_sel]
+ local def=card.def
+ rectfill(45,94,126,103,0)
+ print(def.name,47,95,def.col)
+ -- stats on same line
+ local sx=47+#def.name*4+4
+ if def.type=="tower" then
+  print("d"..def.dmg.." r"..def.rng,sx,95,6)
+ elseif def.type=="trap" then
+  if def.name=="slower" then print("slow",sx,95,1)
+  elseif def.name=="spike" then print("d"..def.dmg,sx,95,8) end
+ elseif def.type=="boost" then
+  local bs=""
+  if def.dmg>0 then bs="+"..def.dmg.."d " end
+  if def.rng>0 then bs=bs.."+"..def.rng.."r" end
+  print(bs,sx,95,10)
  end
 end
 
 function draw_reward()
- rectfill(20,40,108,88,0)
- rect(20,40,108,88,7)
- -- show tier label
+ rectfill(18,38,110,90,0)
+ rect(18,38,110,90,5)
+ -- tier label
  local tier=get_reward_tier(wave_num-1)
  local tlbl="common"
  local tcol=6
  if tier==2 then tlbl="rare" tcol=12
  elseif tier==3 then tlbl="legendary" tcol=10 end
- print(tlbl.." reward",38,44,tcol)
+ print("pick "..tlbl,40,41,tcol)
 
  for i=1,3 do
   local def=reward_cards[i]
-  local x=24+(i-1)*30
-  local y=54
-  local col=def.col
-  -- rarity border color
-  local bcol=6
-  if def.rar==2 then bcol=12
-  elseif def.rar==3 then bcol=10 end
+  local x=22+(i-1)*30
+  local y=52
+  local sel=i==reward_sel
 
-  if i==reward_sel then
-   rect(x-1,y-1,x+26,y+28,7)
-  end
+  -- card bg
+  rectfill(x,y,x+26,y+32,def.col)
+  rect(x,y,x+26,y+32,sel and 7 or 5)
 
-  rectfill(x,y,x+25,y+27,col)
-  rect(x,y,x+25,y+27,bcol)
+  -- card content
   print(sub(def.name,1,6),x+1,y+2,0)
-  print("c"..def.cost,x+1,y+12,0)
-  if def.dmg>0 then print("d"..def.dmg,x+1,y+18,0) end
-  if def.rng>0 then print("r"..def.rng,x+12,y+18,0) end
+  print("cost "..def.cost,x+1,y+12,0)
+  if def.dmg>0 then print("d"..def.dmg,x+1,y+22,0) end
+  if def.rng>0 then print("r"..def.rng,x+14,y+22,0) end
+
+  -- selection indicator
+  if sel then
+   print("\x83",x+10,y+34,7)
+  end
  end
 end
 
 function draw_title()
- -- animated background
- for i=0,15 do
-  local y=(title_t*0.3+i*12)%140-10
-  local x=sin(i*0.1+title_t*0.01)*20+64
-  circfill(x,y,2,1)
+ -- animated background dots
+ for i=0,12 do
+  local y=(title_t*0.2+i*11)%140-10
+  local x=sin(i*0.12+title_t*0.008)*25+64
+  pset(x,y,5)
  end
 
  -- title box
- rectfill(14,20,114,48,1)
- rect(14,20,114,48,12)
- rect(15,21,113,47,5)
+ rectfill(18,18,110,50,0)
+ rect(18,18,110,50,5)
 
  -- title text
  local bounce=sin(title_t*0.05)*2
- print("stackarta",34,26+bounce,12)
- print("stackarta",33,25+bounce,7)
+ print("stackarta",36,24+bounce,12)
+ print("stackarta",35,23+bounce,7)
 
  -- tagline
- print("burn the hand.",28,40,6)
- print("build the land.",26,46,6)
+ print("burn the hand",32,38,6)
+ print("build the land",30,46,5)
 
  -- decorative core
  local pulse=sin(title_t*0.1)*2
- circfill(64,64,6+pulse,14)
- circfill(64,64,4+pulse*0.5,15)
+ circfill(64,66,5+pulse,14)
+ circfill(64,66,3+pulse*0.5,15)
 
  -- difficulty selector
  local dcol={11,6,8}
- rectfill(30,76,98,88,1)
- rect(30,76,98,88,5)
- print("\139",32,80,6)
- print(diff_names[difficulty],50,80,dcol[difficulty])
- print("\145",90,80,6)
+ rectfill(32,78,96,90,0)
+ rect(32,78,96,90,5)
+ print("\139",36,82,6)
+ print(diff_names[difficulty],52,82,dcol[difficulty])
+ print("\145",88,82,6)
 
- -- instructions panel
- rectfill(24,92,104,114,1)
- rect(24,92,104,114,5)
+ -- tips
+ rectfill(20,94,108,116,0)
+ rect(20,94,108,116,5)
+ print("z place  x burn",32,98,6)
+ print("\139\145 move  \x83\x94 cards",28,106,5)
 
- print("\x97 place towers",32,95,10)
- print("\x8e burn for buffs",30,102,8)
- print("z+\x83 deck",42,109,5)
-
- -- high score (if any)
+ -- high score
  if best_wave>0 then
-  print("best:w"..best_wave.." k"..best_kills,34,118,5)
+  print("best w"..best_wave.." k"..best_kills,36,120,5)
  end
 
  -- start prompt
@@ -1669,35 +1657,32 @@ end
 
 function draw_gameover()
  cls(0)
- local dcol={11,6,8}
+
  if core_hp<=0 then
-  print("game over",44,25,8)
-  print("wave "..wave_num,48,35,7)
+  print("game over",44,20,8)
+  print("wave "..wave_num,50,32,7)
   if endless_mode then
-   print("(endless)",46,42,10)
+   print("endless",50,40,10)
   end
  else
-  print("victory!",46,25,11)
-  print("core defended!",32,35,7)
+  print("victory!",46,20,11)
+  print("defended!",44,32,7)
  end
- -- difficulty and stats
- local dy=core_hp<=0 and 50 or 45
- print("["..diff_names[difficulty].."]",48,dy,dcol[difficulty])
- print("enemies slain: "..kills,28,dy+10,6)
+
+ -- stats box
+ rectfill(24,50,104,90,0)
+ rect(24,50,104,90,5)
+ print("kills: "..kills,42,54,7)
+ print("["..diff_names[difficulty].."]",46,64,6)
 
  -- high scores
- local hy=core_hp<=0 and 70 or 65
- rectfill(24,hy,104,hy+30,1)
- rect(24,hy,104,hy+30,5)
- print("- best -",48,hy+3,6)
- print("wave: "..best_wave,36,hy+13,7)
- print("kills: "..best_kills,66,hy+13,7)
- -- new record indicator
+ print("best",54,74,5)
+ print("w"..best_wave.." k"..best_kills,42,82,6)
  if wave_num>=best_wave or kills>=best_kills then
-  print("*new*",52,hy+23,10)
+  print("new!",86,82,10)
  end
 
- print("z to restart",40,hy+40,5)
+ print("z restart",48,100,6)
 
  if btnp(4) then
   start_game()
