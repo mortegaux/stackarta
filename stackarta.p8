@@ -35,7 +35,10 @@ card_defs={
  {id=6,name="expand",cost=0,dmg=0,rng=2,rate=0,type="boost",spr=21,col=12,rar=3},
  {id=7,name="spike",cost=1,dmg=3,rng=0,rate=0,type="trap",spr=22,col=8,rar=1},
  {id=8,name="blaster",cost=3,dmg=1,rng=20,rate=45,type="tower",spr=23,col=9,rar=2,aoe=true},
- {id=9,name="rapid",cost=4,dmg=1,rng=30,rate=8,type="tower",spr=24,col=11,rar=3}
+ {id=9,name="rapid",cost=4,dmg=1,rng=30,rate=8,type="tower",spr=24,col=11,rar=3},
+ {id=10,name="surge",cost=0,dmg=1,rng=1,rate=0,type="boost",spr=25,col=10,rar=1},
+ {id=11,name="amp",cost=0,dmg=3,rng=0,rate=0,type="boost",spr=26,col=8,rar=2},
+ {id=12,name="focus",cost=0,dmg=0,rng=3,rate=0,type="boost",spr=27,col=12,rar=2}
 }
 
 -- wave scaling (dynamic)
@@ -917,13 +920,27 @@ end
 function init_reward()
  reward_cards={}
  local tier=get_reward_tier(wave_num-1)
- local pool=get_cards_by_rar(tier)
- -- fallback if pool empty
- if #pool==0 then pool=card_defs end
- for i=1,3 do
-  local idx=flr(rnd(#pool))+1
-  add(reward_cards,pool[idx])
+ -- split pool into boosts and weapons
+ local boosts={}
+ local weapons={}
+ for c in all(card_defs) do
+  if c.rar==tier then
+   if c.type=="boost" then
+    add(boosts,c)
+   else
+    add(weapons,c)
+   end
+  end
  end
+ -- pick 2 boosts, 1 weapon (fallback if pool empty)
+ for i=1,2 do
+  local pool=boosts
+  if #pool==0 then pool=weapons end
+  add(reward_cards,pool[flr(rnd(#pool))+1])
+ end
+ local pool=weapons
+ if #pool==0 then pool=boosts end
+ add(reward_cards,pool[flr(rnd(#pool))+1])
  reward_sel=1
 end
 

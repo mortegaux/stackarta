@@ -103,14 +103,14 @@ Cards defined in `card_defs` table. Each card has: `id`, `name`, `cost`, `dmg`, 
 Types:
 - `"tower"`: Placeable, blocks pathing, auto-fires
 - `"trap"`: Placeable, doesn't block pathing, applies effects
-- `"boost"`: Burn-only, gives +2 to specific stat
+- `"boost"`: Burn-only, gives buff to tile stats
 
 Burned tower/trap cards give +1 DMG. Boost cards give their `dmg`/`rng` values as buffs.
 
 ### Card Rarities
-- **Common (rar=1)**: sentry, shorty, spike
-- **Rare (rar=2)**: l-shot, slower, blaster (AOE)
-- **Legendary (rar=3)**: ovrclk, expand, rapid
+- **Common (rar=1)**: sentry, shorty, spike, surge (boost)
+- **Rare (rar=2)**: l-shot, slower, blaster (AOE), amp (boost), focus (boost)
+- **Legendary (rar=3)**: ovrclk (boost), expand (boost), rapid
 
 ### Special Card Mechanics
 - **spike**: Trap that deals 3 damage once, then disappears
@@ -118,7 +118,7 @@ Burned tower/trap cards give +1 DMG. Boost cards give their `dmg`/`rng` values a
 - **rapid**: Tower with very fast fire rate (rate=8)
 
 ### Reward Pool Tiers
-After each wave, player picks 1 of 3 cards from a tier-appropriate pool:
+After each wave, player picks 1 of 3 cards: **2 boosts + 1 weapon** (tower/trap) from the tier-appropriate pool. This weights rewards toward tile-buffing to reinforce the burn mechanic. If a pool (boost or weapon) is empty for a tier, the other pool fills in.
 - Waves 1-3: Common rewards (gray border)
 - Waves 4-6: Rare rewards (blue border)
 - Waves 7-9: Legendary rewards (yellow border)
