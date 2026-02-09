@@ -1005,11 +1005,6 @@ function _draw()
   print(wlbl,2,95,wcol)
   local rlbl=remaining.." left"
   print(rlbl,126-#rlbl*4,95,8)
-  -- thin progress bar
-  local prog=1-(remaining/max(wave_cnt,1))
-  rectfill(2,100,120,101,5)
-  rectfill(2,100,2+118*prog,101,11)
-  rect(2,100,120,101,6)
  end
 
  if state=="reward" then
@@ -1311,8 +1306,10 @@ function draw_ui()
  print("\x97"..kills,116,2,5)
 
  -- hand (bottom)
- if state=="plan" then
+ if state=="plan" or state=="wave" then
   draw_hand_ui()
+ end
+ if state=="plan" then
   draw_context_panel()
  end
 end
@@ -1363,23 +1360,34 @@ function draw_context_panel()
   if tile.heat>0 then
    print("heat:"..tile.heat,2,119,9)
   end
- else
-  -- wave preview (default)
-  local info=get_wave_info(wave_num)
-  local wcol=6
-  if info.type=="elite" then wcol=10
-  elseif info.type=="boss" then wcol=14 end
-  print("next",2,95,5)
-  print("x"..info.cnt.." hp"..flr(info.hp),2,103,wcol)
-  -- enemy type dots
-  if info.mix and #info.mix>0 then
-   local mx=2
-   for i,et in ipairs(info.mix) do
-    rectfill(mx,112,mx+3,114,enemy_types[et].col)
-    mx+=5
+ elseif #hand>0 then
+  -- selected card info (default)
+  local card=hand[cur_sel]
+  local def=card.def
+  print(def.name,2,95,def.col)
+  if def.type=="tower" then
+   print("tower",2,103,12)
+   print("dmg:"..def.dmg,2,111,8)
+   print("rng:"..def.rng,22,111,12)
+   local cost=get_place_cost(cur_x,cur_y,card)
+   print("cost:"..cost,2,119,10)
+  elseif def.type=="trap" then
+   print("trap",2,103,8)
+   if def.name=="slower" then
+    print("slow 50%",2,111,1)
+   else
+    print("dmg:"..def.dmg,2,111,8)
    end
+   local cost=get_place_cost(cur_x,cur_y,card)
+   print("cost:"..cost,2,119,10)
+  elseif def.type=="boost" then
+   print("boost",2,103,10)
+   local sy=111
+   if def.dmg>0 then print("+"..def.dmg.."d",2,sy,8) sy+=8 end
+   if def.rng>0 then print("+"..def.rng.."r",2,sy,12) sy+=8 end
+   if sy==111 then sy+=8 end
+   print("cost:"..def.cost,2,119,10)
   end
-  print("\x83=cards",2,119,5)
  end
 end
 
@@ -1390,10 +1398,10 @@ function draw_hand_ui()
  rect(44,93,127,127,5)
 
  -- fixed 5-slot layout
- local card_w=14
- local card_h=18
- local start_x=50
- local y=106
+ local card_w=15
+ local card_h=22
+ local start_x=48
+ local y=104
 
  -- draw placeholder outlines for all 5 slots
  for i=1,5 do
@@ -1402,7 +1410,7 @@ function draw_hand_ui()
  end
 
  if #hand==0 then
-  print("wave starts",60,97,6)
+  if state=="plan" then print("wave starts",60,97,6) end
   return
  end
 
@@ -1411,85 +1419,138 @@ function draw_hand_ui()
   local x=start_x+(i-1)*card_w
   local cy=y
   local sel=i==cur_sel
+  local def=card.def
+  local col=def.col
 
   -- selected card rises
   if sel then cy=y-4 end
 
-  -- card bg
-  local col=card.def.col
-  rectfill(x,cy,x+card_w-2,cy+card_h-1,col)
+  -- dark card body
+  rectfill(x,cy,x+card_w-2,cy+card_h-1,0)
   rect(x,cy,x+card_w-2,cy+card_h-1,sel and 7 or 5)
 
-  -- card type icon (small)
-  local icon="\x8e"
-  if card.def.type=="tower" then icon="\x94"
-  elseif card.def.type=="trap" then icon="\x97"
-  elseif card.def.type=="boost" then icon="\x8b"
+  -- colored top stripe (2px) with type variation
+  if def.type=="trap" then
+   -- dashed: gap in center
+   rectfill(x+1,cy+1,x+5,cy+2,col)
+   rectfill(x+8,cy+1,x+12,cy+2,col)
+  elseif def.type=="boost" then
+   -- dots pattern
+   for dx=2,11,3 do
+    pset(x+dx,cy+1,col)
+    pset(x+dx+1,cy+2,col)
+   end
+  else
+   -- tower: solid stripe
+   rectfill(x+1,cy+1,x+card_w-3,cy+2,col)
   end
-  print(icon,x+1,cy+1,0)
 
-  -- card name (truncated)
-  print(sub(card.def.name,1,4),x+1,cy+8,0)
+  -- card type icon (centered)
+  local icon="\x8e"
+  if def.type=="tower" then icon="\x94"
+  elseif def.type=="trap" then icon="\x97"
+  elseif def.type=="boost" then icon="\x8b"
+  end
+  print(icon,x+4,cy+5,col)
 
-  -- cost badge
-  local cost=card.def.cost
+  -- card name (3 chars to fit width)
+  print(sub(def.name,1,3),x+1,cy+12,col)
+
+  -- cost badge (bottom center)
+  local cost=def.cost
   if sel then
    cost=get_place_cost(cur_x,cur_y,card)
   end
-  circfill(x+9,cy+14,3,0)
-  print(cost,x+7,cy+12,10)
+  circfill(x+6,cy+18,3,0)
+  print(cost,x+5,cy+16,10)
  end
 
- -- selected card tooltip (above cards)
- local card=hand[cur_sel]
- local def=card.def
- rectfill(45,94,126,103,0)
- print(def.name,47,95,def.col)
- -- stats on same line
- local sx=47+#def.name*4+4
- if def.type=="tower" then
-  print("d"..def.dmg.." r"..def.rng,sx,95,6)
- elseif def.type=="trap" then
-  if def.name=="slower" then print("slow",sx,95,1)
-  elseif def.name=="spike" then print("d"..def.dmg,sx,95,8) end
- elseif def.type=="boost" then
-  local bs=""
-  if def.dmg>0 then bs="+"..def.dmg.."d " end
-  if def.rng>0 then bs=bs.."+"..def.rng.."r" end
-  print(bs,sx,95,10)
- end
 end
 
 function draw_reward()
- rectfill(18,38,110,90,0)
- rect(18,38,110,90,5)
+ rectfill(14,28,114,100,0)
+ rect(14,28,114,100,5)
  -- tier label
  local tier=get_reward_tier(wave_num-1)
- local tlbl="common"
  local tcol=6
- if tier==2 then tlbl="rare" tcol=12
- elseif tier==3 then tlbl="legendary" tcol=10 end
- print("pick "..tlbl,40,41,tcol)
+ if tier==2 then tcol=12
+ elseif tier==3 then tcol=10 end
+ print("pick a card",40,31,tcol)
 
  for i=1,3 do
   local def=reward_cards[i]
-  local x=22+(i-1)*30
-  local y=52
+  local x=17+(i-1)*32
+  local y=40
   local sel=i==reward_sel
+  local cw=29
+  local ch=50
 
-  -- card bg
-  rectfill(x,y,x+26,y+32,def.col)
-  rect(x,y,x+26,y+32,sel and 7 or 5)
+  -- tier-colored border
+  local bcol=sel and 7 or tcol
 
-  -- card content
-  print(sub(def.name,1,6),x+1,y+2,0)
-  print("cost "..def.cost,x+1,y+12,0)
-  if def.dmg>0 then print("d"..def.dmg,x+1,y+22,0) end
-  if def.rng>0 then print("r"..def.rng,x+14,y+22,0) end
+  -- dark card body
+  rectfill(x,y,x+cw,y+ch,0)
+  rect(x,y,x+cw,y+ch,bcol)
+
+  -- colored header bar (3px)
+  rectfill(x+1,y+1,x+cw-1,y+3,def.col)
+
+  -- name in card color
+  print(def.name,x+2,y+6,def.col)
+
+  -- type label with type-specific color
+  local tcl=6
+  if def.type=="tower" then tcl=12
+  elseif def.type=="trap" then tcl=8
+  elseif def.type=="boost" then tcl=10 end
+  print(def.type,x+2,y+14,tcl)
+
+  -- divider line
+  line(x+2,y+21,x+cw-2,y+21,5)
+
+  -- stats section
+  if def.type=="boost" then
+   -- buff values on separate lines
+   if def.dmg>0 then
+    print("dmg",x+2,y+24,6)
+    print("+"..def.dmg,x+16,y+24,8)
+   end
+   if def.rng>0 then
+    print("rng",x+2,y+31,6)
+    print("+"..def.rng,x+16,y+31,12)
+   end
+   -- cost at bottom
+   print("cost",x+2,y+42,6)
+   print(def.cost,x+20,y+42,10)
+  elseif def.type=="trap" then
+   -- effect description
+   if def.name=="slower" then
+    print("slow",x+2,y+24,1)
+    print("50%",x+2,y+31,1)
+   elseif def.name=="spike" then
+    print("dmg",x+2,y+24,6)
+    print(def.dmg,x+16,y+24,8)
+    print("one use",x+2,y+31,5)
+   end
+   -- cost at bottom
+   print("cost",x+2,y+42,6)
+   print(def.cost,x+20,y+42,10)
+  else
+   -- tower stats
+   print("dmg",x+2,y+24,6)
+   print(def.dmg,x+16,y+24,8)
+   print("rng",x+2,y+31,6)
+   print(def.rng,x+16,y+31,12)
+   print("rate",x+2,y+38,6)
+   print(def.rate,x+20,y+38,6)
+   -- cost at bottom
+   print("cost",x+2,y+45,6)
+   print(def.cost,x+20,y+45,10)
+  end
 
   -- selection indicator
   if sel then
-   print("\x94",x+10,y+34,7)
+   rectfill(x+8,y+ch+2,x+cw-8,y+ch+4,7)
   end
  end
 end
