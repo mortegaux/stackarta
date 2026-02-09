@@ -949,8 +949,8 @@ function update_reward()
  if btnp(1) then reward_sel=min(3,reward_sel+1) end
 
  if btnp(4) or btnp(5) then
-  -- add selected card to deck
-  add(deck,{def=reward_cards[reward_sel]})
+  -- add selected card to hand
+  add(hand,{def=reward_cards[reward_sel]})
   state="plan"
  end
 end
@@ -1283,11 +1283,11 @@ function draw_ui()
  line(0,10,127,10,5)
 
  -- energy section (left) - compact pips
- print("\x8b",2,2,10)
+ print("nrg",2,2,10)
  for i=1,max_energy+2 do
   local col=5
   if i<=energy then col=10 end
-  rectfill(9+i*4,3,9+i*4+2,6,col)
+  rectfill(14+i*4,3,14+i*4+2,6,col)
  end
 
  -- core hp section (center) - bar with number
@@ -1389,17 +1389,24 @@ function draw_hand_ui()
  line(44,93,127,93,5)
  rect(44,93,127,127,5)
 
+ -- fixed 5-slot layout
+ local card_w=14
+ local card_h=18
+ local start_x=50
+ local y=106
+
+ -- draw placeholder outlines for all 5 slots
+ for i=1,5 do
+  local x=start_x+(i-1)*card_w
+  rect(x,y,x+card_w-2,y+card_h-1,1)
+ end
+
  if #hand==0 then
-  print("wave starts",60,108,6)
+  print("wave starts",60,97,6)
   return
  end
 
- -- compact cards
- local card_w=14
- local card_h=18
- local start_x=64-(#hand*card_w)/2+10
- local y=106
-
+ -- draw real cards on top of their slots
  for i,card in ipairs(hand) do
   local x=start_x+(i-1)*card_w
   local cy=y
@@ -1482,7 +1489,7 @@ function draw_reward()
 
   -- selection indicator
   if sel then
-   print("\x83",x+10,y+34,7)
+   print("\x94",x+10,y+34,7)
   end
  end
 end
