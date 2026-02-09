@@ -1277,7 +1277,7 @@ function draw_ui()
  local hpx=52
  rectfill(hpx,2,hpx+30,7,5)
  local hp_w=30*core_hp/max_core_hp
- rectfill(hpx,2,hpx+hp_w,7,8)
+ rectfill(hpx,2,hpx+hp_w,7,11)
  rect(hpx,2,hpx+30,7,6)
  -- hp number centered
  local hp_str=core_hp.."/"..max_core_hp
